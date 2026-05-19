@@ -1,89 +1,82 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 
-const Chronometer = () => {
-  const [time, setTime] = useState({
-    ms: 0,
-    s: 0,
-    m: 0,
-    h: 0,
-  });
+const pad = (n) => String(n).padStart(2, '0');
 
-  const [interv, setInterv] = useState();
-  const [status, setStatus] = useState(0); // Not started = 0 // started = 1 // stopped = 2
+const formatTime = (ms) => {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const cs = Math.floor((ms % 1000) / 10);
+  return h > 0
+    ? `${pad(h)}:${pad(m)}:${pad(s)}.${pad(cs)}`
+    : `${pad(m)}:${pad(s)}.${pad(cs)}`;
+};
+
+const Chronometer = () => {
+  const [elapsed, setElapsed] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [laps, setLaps] = useState([]);
+  const intervalRef = useRef(null);
+  const startRef = useRef(0);
+  const accRef = useRef(0);
 
   const start = () => {
-    run();
-    setStatus(1);
-    setInterv(setInterval(run, 10));
-  };
-
-  var updatedMs = time.ms,
-    updatedS = time.s,
-    updatedM = time.m,
-    updatedH = time.h;
-
-  const run = () => {
-    if (updatedM === 60) {
-      updatedH++;
-      updatedM = 0;
-    }
-    if (updatedS === 60) {
-      updatedM++;
-      updatedS = 0;
-    }
-    if (updatedMs === 100) {
-      updatedS++;
-      updatedMs = 0;
-    }
-    updatedMs++;
-    return setTime({ ms: updatedMs, s: updatedS, m: updatedM, h: updatedH });
+    startRef.current = Date.now();
+    setRunning(true);
+    intervalRef.current = setInterval(() => {
+      setElapsed(accRef.current + Date.now() - startRef.current);
+    }, 10);
   };
 
   const stop = () => {
-    clearInterval(interv);
-    setStatus(2);
+    clearInterval(intervalRef.current);
+    accRef.current += Date.now() - startRef.current;
+    setRunning(false);
   };
 
   const reset = () => {
-    clearInterval(interv);
-    setStatus(0);
-    setTime({ ms: 0, s: 0, m: 0, h: 0 });
+    clearInterval(intervalRef.current);
+    accRef.current = 0;
+    setElapsed(0);
+    setLaps([]);
+    setRunning(false);
   };
 
-  const resume = () => start();
+  const lap = () => setLaps((prev) => [...prev, elapsed]);
+
   return (
     <>
-      <div className="flex p-6 w-full text-center justify-center text-3xl font-mono">
-        <span>{String('0' + time.m).slice(-2)}</span>
-        <span>:</span>
-        <span>{String('0' + time.s).slice(-2)}</span>
-        <span>:</span>
-        <span>{String('0' + time.ms).slice(-2)}</span>
+      <div className="flex p-6 w-full text-center justify-center text-5xl font-mono">
+        {formatTime(elapsed)}
       </div>
 
-      <div className="flex grow gap-5 items-center justify-center">
-        {status === 1 && (
+      <div className="flex gap-4 items-center justify-center">
+        {!running ? (
+          <Button onClick={start}>{elapsed === 0 ? 'Start' : 'Resume'}</Button>
+        ) : (
           <>
             <Button onClick={stop}>Stop</Button>
-            <Button onClick={reset}>Reset</Button>
+            <Button onClick={lap} variant="outline">Lap</Button>
           </>
         )}
-        {status === 2 && (
-          <>
-            <Button onClick={resume}>Resume</Button>
-            <Button onClick={reset}>Reset</Button>
-          </>
-        )}
-        {status === 0 && (
-          <>
-            <Button onClick={start}>Start</Button>
-            <Button onClick={reset}>Reset</Button>
-          </>
-        )}
+        <Button onClick={reset} variant="outline" disabled={elapsed === 0}>
+          Reset
+        </Button>
       </div>
+
+      {laps.length > 0 && (
+        <ul className="mt-6 w-full max-w-xs mx-auto divide-y text-sm font-mono">
+          {laps.map((lapTime, i) => (
+            <li key={i} className="flex justify-between py-1.5 px-2">
+              <span className="text-muted-foreground">Lap {i + 1}</span>
+              <span>{formatTime(lapTime)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 };
