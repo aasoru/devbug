@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 
-import { Label } from '@/components/ui/Label';
-import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
 import DataTable from '@/components/TextAnalizer/Table';
