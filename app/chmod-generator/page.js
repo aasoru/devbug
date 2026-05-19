@@ -48,7 +48,7 @@ export default function ChmodCalculator() {
         <CardDescription>CHMOD Generator</CardDescription>
 
         <CardContent>
-          <table className="overflow-hidden w-full max-w-3xl mx-auto my-1 border-collapse">
+          <table className="overflow-hidden w-full max-w-3xl mx-auto my-1">
             <thead>
               <tr>
                 <th className="text-center align-middle p-2.5" />
@@ -57,11 +57,12 @@ export default function ChmodCalculator() {
                 <th className="text-center align-middle p-2.5">Public (o)</th>
               </tr>
             </thead>
-            <tbody className="border border-solid border-[#dae9f2]">
+            <tbody>
               <tr>
                 <td className="text-center align-middle p-2.5">Read (4)</td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={ownerRead}
                     onClick={() => {
                       setOwnerRead((prev) => !prev);
@@ -73,6 +74,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={groupRead}
                     onClick={() => {
                       setGroupRead((prev) => !prev);
@@ -84,6 +86,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={publicRead}
                     onClick={() => {
                       setPublicRead((prev) => !prev);
@@ -98,6 +101,7 @@ export default function ChmodCalculator() {
                 <td className="text-center align-middle p-2.5">Write (2)</td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={ownerWrite}
                     onClick={() => {
                       setOwnerWrite((prev) => !prev);
@@ -109,6 +113,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={groupWrite}
                     onClick={() => {
                       setGroupWrite((prev) => !prev);
@@ -120,6 +125,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={publicWrite}
                     onClick={() => {
                       setPublicWrite((prev) => !prev);
@@ -136,6 +142,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={ownerExecution}
                     onClick={() => {
                       setOwnerExecution((prev) => !prev);
@@ -147,6 +154,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={groupExecution}
                     onClick={() => {
                       setGroupExecution((prev) => !prev);
@@ -158,6 +166,7 @@ export default function ChmodCalculator() {
                 </td>
                 <td className="text-center align-middle p-2.5">
                   <Checkbox
+                    className="h-8 w-8 mx-auto"
                     checked={publicExecution}
                     onClick={() => {
                       setPublicExecution((prev) => !prev);
@@ -170,12 +179,12 @@ export default function ChmodCalculator() {
               </tr>
             </tbody>
           </table>
-          <div className="w-full text-center text-5xl font-mono my-20">
+          <div className="w-full text-center text-5xl font-mono my-4">
             {ownerValue}
             {groupValue}
             {publicValue}
           </div>
-          <div className="w-full text-center text-5xl font-mono my-20">
+          <div className="w-full text-center text-5xl font-mono my-4">
             {ownerRead ? 'r' : '-'}
             {ownerWrite ? 'w' : '-'}
             {ownerExecution ? 'x' : '-'}
@@ -195,19 +204,27 @@ export default function ChmodCalculator() {
   );
 }
 
-const CopyButton = ({ value, copied }) => {
+const CopyButton = ({ value }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="flex w-full max-w-sm items-center space-x-2">
-      <Input value={value} />
+      <Input value={value} readOnly />
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button onClick={() => navigator.clipboard.writeText(value)}>
+            <Button onClick={handleCopy}>
               <ContentCopyIcon />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{true === true ? 'Copy to clipboard' : 'Copied!'}</p>
+            <p>{copied ? 'Copied!' : 'Copy to clipboard'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

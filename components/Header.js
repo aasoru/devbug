@@ -54,7 +54,6 @@ export default function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <div>Menu</div>
       </div>
     </header>
   );
