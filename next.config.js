@@ -3,6 +3,14 @@ const nextConfig = {
   images: {
     dangerouslyAllowSVG: true,
   },
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: [{ loader: '@svgr/webpack', options: { icon: true } }],
+        as: '*.js',
+      },
+    },
+  },
   /* logging: {
     fetches: {
       fullUrl: true,
