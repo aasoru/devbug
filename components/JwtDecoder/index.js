@@ -3,18 +3,12 @@
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { base64UrlDecode } from './lib';
 
-const base64UrlDecode = (str) => {
-  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-  try {
-    return JSON.parse(decodeURIComponent(atob(padded).split('').map(
-      (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join('')));
-  } catch {
-    return null;
-  }
-};
+const EXAMPLE_TOKEN =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
+  'eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.' +
+  'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
 const formatDate = (unix) =>
   new Date(unix * 1000).toLocaleString();
@@ -60,8 +54,14 @@ const JwtDecoder = () => {
 
   return (
     <>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-muted-foreground">Token</span>
+        <Button variant="outline" size="sm" onClick={() => setToken(EXAMPLE_TOKEN)}>
+          Load example
+        </Button>
+      </div>
       <Textarea
-        className="font-mono text-sm min-h-[100px]"
+        className="font-mono text-sm min-h-24"
         value={token}
         onChange={(e) => setToken(e.target.value)}
         placeholder="Paste your JWT token here..."
@@ -95,9 +95,10 @@ const JwtDecoder = () => {
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Signature is not verified — validation requires the secret key.
-          </p>
+          <div className="text-xs text-muted-foreground flex flex-col gap-1">
+            <p>Signature is not verified — validation requires the secret key.</p>
+            <p>The header and payload are Base64URL-encoded JSON, not encrypted. Anyone can read them. Only the signature proves the token hasn&apos;t been tampered with.</p>
+          </div>
         </div>
       )}
     </>

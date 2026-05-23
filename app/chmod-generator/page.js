@@ -45,7 +45,7 @@ export default function ChmodCalculator() {
       <Card>
         <CardTitle>CHMOD Generator</CardTitle>
         <div className="py-4" />
-        <CardDescription>CHMOD Generator</CardDescription>
+        <CardDescription>Calculate Unix file permissions. Toggle read, write, and execute bits for owner, group, and others to get the numeric and symbolic representation.</CardDescription>
 
         <CardContent>
           <table className="overflow-hidden w-full max-w-3xl mx-auto my-1">
