@@ -59,6 +59,16 @@ const Sidebar = () => {
               <span>Json Minifier</span>
             </div>
           </MenuItem>
+          <MenuItem href="/jwt-decoder" active>
+            <div className="flex items-center gap-3">
+              <span>JWT Decoder</span>
+            </div>
+          </MenuItem>
+          <MenuItem href="/base64" active>
+            <div className="flex items-center gap-3">
+              <span>Base64</span>
+            </div>
+          </MenuItem>
         </ul>
         {/*         <GroupSection title="Administración">
           {administrationList.map((item, index) => {

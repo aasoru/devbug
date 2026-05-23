@@ -11,10 +11,10 @@ import {
 export default function TextAnalizer() {
   return (
     <div className="py-6">
-      <Card>
+      <Card className="max-w-none">
         <CardTitle>Text Analizer</CardTitle>
         <div className="py-4" />
-        <CardDescription>Text analyzer</CardDescription>
+        <CardDescription>Paste any text to get character, word, and line counts. Use the search field to count occurrences of a specific pattern.</CardDescription>
         <CardContent>
           <div className="py-2" />
           <TextAnalizerComponent />
