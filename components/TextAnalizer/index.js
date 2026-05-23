@@ -1,116 +1,70 @@
 'use client';
 
 import { useState } from 'react';
-
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
-import DataTable from '@/components/TextAnalizer/Table';
+const StatCard = ({ label, value }) => (
+  <div className="flex flex-col gap-1 rounded-lg border bg-muted/30 px-4 py-3">
+    <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
+    <span className="text-2xl font-bold tabular-nums">{value}</span>
+  </div>
+);
+
+const StatGroup = ({ title, children }) => (
+  <div className="flex flex-col gap-2">
+    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{title}</span>
+    <div className="grid grid-cols-2 gap-2">{children}</div>
+  </div>
+);
 
 const TextAnalizer = () => {
   const [text, setText] = useState('');
   const [match, setMatch] = useState('');
-  const [matchCounter, setMatchCounter] = useState(0);
-  const [wordCounter, setWordCounter] = useState(0);
-  const [characterCounter, setCharacterCounter] = useState(0);
-  const [spacesCounter, setSpacesCounter] = useState(0);
-  const [uniqueWordsCounter, setUniqueWordsCounter] = useState(0);
 
-  const onChange = (e) => {
-    const { value } = e.target;
-    wordsHandle(value);
-    spacesHandle(value);
-    uniqueWordsHandle(value);
+  const words = text.split(/\s+/).filter((w) => w.trim() !== '');
+  const uniqueWords = new Set(words);
+  const matchCount = match.length > 0 ? text.split(match).length - 1 : 0;
 
-    const textWithoutSpaces = value.replace(/\s/g, '');
-    setCharacterCounter(textWithoutSpaces.length);
-
-    setText(value);
-  };
-
-  const wordsHandle = (text) => {
-    const words = text.split(/\s+/).filter((word) => word.trim() !== '');
-    setWordCounter(words.length);
-  };
-
-  const spacesHandle = (text) =>
-    setSpacesCounter((text.match(/[ \t]/g) || []).length);
-
-  const uniqueWordsHandle = (text) => {
-    // Use Set to avoid words repetitions
-    const uniqueWordsSet = new Set(
-      text.split(/\s+/).filter((word) => word.trim() !== '')
-    );
-
-    setUniqueWordsCounter(uniqueWordsSet.size);
-  };
-
-  const matchSearch = (e) => {
-    const { value } = e.target;
-    setMatch(value);
-
-    if (value.length === 0) setMatchCounter(0);
-    else setMatchCounter(text.split(value).length - 1);
-  };
-
-  const data = [
-    { title: 'Characters', value: characterCounter },
-    { title: 'Spaces', value: spacesCounter },
-    { title: 'Unique Words', value: uniqueWordsCounter },
-    { title: 'Letter', value: text.length },
-    { title: 'Words', value: wordCounter },
-    { title: 'Lines', value: text.length > 0 ? text.split('\n').length : 0 },
-    //{ title: 'Coincidences', value: matchCounter },
-  ];
-
-  const columns = [
-    {
-      accessorKey: 'title',
-      header: 'Title',
-    },
-    {
-      accessorKey: 'value',
-      header: 'Value',
-    },
-  ];
   return (
-    <>
-      <Textarea
-        value={text}
-        onChange={onChange}
-        placeholder="Input your text... "
-      />
-      {/* <div className="py-2" />
-        <Label>
-          Search match
-          <Input
-            value={match}
-            onChange={matchSearch}
-            placeholder="Search for any value"
-          />
-        </Label> */}
-      <div className="py-4" />
-      <DataTable
-        columns={columns}
-        data={data}
-        className="table-fixed text-center"
-      />
-      {/* <table className="table-fixed overflow-hidden w-full max-w-3xl mx-auto my-1 border-collapse ">
-        <tbody>
-          {data.map((item, key) => {
-            return (
-              <tr
-                key={key}
-                className="text-center align-middle bg-gray-500 border border-slate-200"
-              >
-                <td className="p-2.5 border border-slate-200">{item.title}</td>
-                <td className="p-2.5 border border-slate-200">{item.value}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table> */}
-    </>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="md:col-span-2 flex flex-col gap-3">
+        <Textarea
+          className="min-h-64"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Input your text..."
+        />
+        <Input
+          value={match}
+          onChange={(e) => setMatch(e.target.value)}
+          placeholder="Search for matches..."
+        />
+      </div>
+
+      <div className="flex flex-col gap-5">
+        <StatGroup title="Characters">
+          <StatCard label="No spaces" value={text.replace(/\s/g, '').length} />
+          <StatCard label="With spaces" value={text.length} />
+        </StatGroup>
+
+        <StatGroup title="Words">
+          <StatCard label="Total" value={words.length} />
+          <StatCard label="Unique" value={uniqueWords.size} />
+        </StatGroup>
+
+        <StatGroup title="Structure">
+          <StatCard label="Spaces" value={(text.match(/[ \t]/g) || []).length} />
+          <StatCard label="Lines" value={text.length > 0 ? text.split('\n').length : 0} />
+        </StatGroup>
+
+        {match.length > 0 && (
+          <StatGroup title="Search">
+            <StatCard label={`"${match}"`} value={matchCount} />
+          </StatGroup>
+        )}
+      </div>
+    </div>
   );
 };
 

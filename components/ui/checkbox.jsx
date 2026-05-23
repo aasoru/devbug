@@ -16,7 +16,7 @@ const Checkbox = React.forwardRef(({ className, checked, ...props }, ref) => (
     )}
     {...props}
   >
-    {checked && <Check className="h-3 w-3" />}
+    {checked && <Check className="h-4 w-4" />}
   </button>
 ))
 Checkbox.displayName = "Checkbox"
