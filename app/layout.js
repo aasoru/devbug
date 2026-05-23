@@ -1,5 +1,6 @@
 //import { Inter } from 'next/font/google'
 import './globals.css';
+import Script from 'next/script';
 
 import { UIProvider } from '@/contexts/ui';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -42,6 +43,12 @@ export default function RootLayout({ children }) {
             </div>
           </UIProvider>
         </ThemeProvider>
+        <Script
+          defer
+          src="https://cloud.umami.is/script.js"
+          data-website-id="REDACTED"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
