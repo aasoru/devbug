@@ -9,7 +9,7 @@ import {
 export default function JsonMinifierPage() {
   return (
     <div className="py-6">
-      <Card>
+      <Card className="max-w-none">
         <CardTitle>JSON Minifier</CardTitle>
         <div className="py-4" />
         <CardDescription>Minify or prettify JSON. Paste your JSON on the left and get the result on the right.</CardDescription>

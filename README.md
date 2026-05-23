@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# devbug
 
-## Getting Started
+A developer Swiss army knife — a collection of small, self-contained tools useful for day-to-day dev work. Minimal external dependencies; each tool works without a backend.
 
-First, run the development server:
+## Tools
+
+| Route | Description |
+|---|---|
+| `/chronometer` | Stopwatch with lap tracking |
+| `/text-analizer` | Word count, character stats, pattern matching |
+| `/chmod-generator` | Unix file permissions calculator |
+| `/json-minifier` | Minify or prettify JSON with size comparison |
+| `/jwt-decoder` | Decode and inspect JWT tokens (header, payload, expiry) |
+| `/base64` | Encode / decode Base64 with UTF-8 support |
+
+## Stack
+
+- **Next.js 16** — App Router, Turbopack
+- **React 18**
+- **Tailwind CSS v3** + shadcn/ui color tokens
+- **next-themes** — dark/light mode via `class` strategy
+- No backend, no database
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm run build
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Adding a new tool
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+1. Create `app/<tool-name>/page.js`
+2. Create `components/<ToolName>/index.js`
+3. Add a `<MenuItem>` in `components/Sidebar.js`
