@@ -14,8 +14,9 @@ const formatDate = (unix) =>
   new Date(unix * 1000).toLocaleString();
 
 const ExpiryBadge = ({ exp }) => {
+  const [now] = useState(Date.now);
   if (!exp) return null;
-  const expired = Date.now() / 1000 > exp;
+  const expired = now / 1000 > exp;
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${expired ? 'bg-destructive/20 text-destructive' : 'bg-green-500/20 text-green-600 dark:text-green-400'}`}>
       {expired ? 'Expired' : 'Valid'}
