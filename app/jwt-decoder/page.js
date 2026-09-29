@@ -9,7 +9,7 @@ import {
 export default function JwtDecoderPage() {
   return (
     <div>
-      <Card>
+      <Card variant="page">
         <CardTitle>JWT Decoder</CardTitle>
         <div className="py-4" />
         <CardDescription>
