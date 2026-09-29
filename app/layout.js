@@ -32,7 +32,7 @@ export default function RootLayout({ children }) {
                   <div>
                     <Header />
 
-                    <div className="flex flex-col px-5 pt-2 pb-5 w-full h-auto">
+                    <div className="flex flex-col px-4 sm:px-5 pt-2 pb-5 w-full h-auto">
                       {children}
                     </div>
                   </div>
