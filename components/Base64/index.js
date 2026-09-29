@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { encode, decode } from './lib';
+import { useCopyToClipboard, copyLabel } from '@/hooks/useCopyToClipboard';
+import CopyErrorAlert from '@/components/CopyErrorAlert';
 
 const Base64 = () => {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { copy: copyText, status: copyStatus, error: copyError, dismissError } = useCopyToClipboard();
 
   const process = (fn, errorMsg) => {
     if (!input.trim()) return;
@@ -24,10 +26,7 @@ const Base64 = () => {
   };
 
   const copy = () => {
-    if (!output) return;
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (output) copyText(output);
   };
 
   return (
@@ -35,10 +34,12 @@ const Base64 = () => {
       <div className="flex gap-2 mb-4">
         <Button onClick={() => process(encode, 'Encoding failed.')}>Encode</Button>
         <Button variant="outline" onClick={() => process(decode, 'Invalid Base64 string.')}>Decode</Button>
-        <Button variant="outline" onClick={copy} disabled={!output}>
-          {copied ? 'Copied!' : 'Copy'}
+        <Button variant="outline" onClick={copy} disabled={!output} className={copyStatus === 'error' ? 'text-destructive' : undefined}>
+          {copyLabel(copyStatus)}
         </Button>
       </div>
+
+      <CopyErrorAlert message={copyError} onDismiss={dismissError} className="mb-4" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">

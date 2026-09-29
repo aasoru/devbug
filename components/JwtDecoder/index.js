@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { base64UrlDecode } from './lib';
+import { useCopyToClipboard, copyLabel } from '@/hooks/useCopyToClipboard';
+import CopyErrorAlert from '@/components/CopyErrorAlert';
 
 const EXAMPLE_TOKEN =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
@@ -38,7 +40,7 @@ const Section = ({ title, data, badge }) => (
 
 const JwtDecoder = () => {
   const [token, setToken] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { copy: copyText, status: copyStatus, error: copyError, dismissError } = useCopyToClipboard();
 
   const parts = token.trim().split('.');
   const isValid = parts.length === 3;
@@ -47,10 +49,7 @@ const JwtDecoder = () => {
   const hasError = token.trim().length > 0 && (!isValid || !header || !payload);
 
   const copy = () => {
-    if (!payload) return;
-    navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (payload) copyText(JSON.stringify(payload, null, 2));
   };
 
   return (
@@ -91,10 +90,11 @@ const JwtDecoder = () => {
           )}
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={copy}>
-              {copied ? 'Copied!' : 'Copy payload'}
+            <Button variant="outline" onClick={copy} className={copyStatus === 'error' ? 'text-destructive' : undefined}>
+              {copyLabel(copyStatus, 'Copy payload')}
             </Button>
           </div>
+          <CopyErrorAlert message={copyError} onDismiss={dismissError} />
 
           <div className="text-xs text-muted-foreground flex flex-col gap-1">
             <p>Signature is not verified — validation requires the secret key.</p>

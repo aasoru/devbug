@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ContentCopyIcon from '@/public/images/icons/content-copy.svg';
+import { useCopyToClipboard, copyLabel } from '@/hooks/useCopyToClipboard';
+import CopyErrorAlert from '@/components/CopyErrorAlert';
 import {
   EMPTY_PERMS, PRESETS,
   toOctalString, toPermString, describePerms,
@@ -35,7 +37,7 @@ export default function ChmodCalculator() {
   const [perms, setPerms] = useState(EMPTY_PERMS);
   const [input, setInput] = useState('');
   const [inputError, setInputError] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { copy: copyText, status: copyStatus, error: copyError, dismissError } = useCopyToClipboard();
 
   const applyPerms = (next) => {
     setPerms(next);
@@ -59,11 +61,7 @@ export default function ChmodCalculator() {
   const description = describePerms(perms);
   const chmodCmd = `chmod ${octal} path`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(chmodCmd);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleCopy = () => copyText(chmodCmd);
 
   return (
     <>
@@ -162,16 +160,17 @@ export default function ChmodCalculator() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button onClick={handleCopy}>
+                    <Button onClick={handleCopy} aria-label="Copy to clipboard">
                       <ContentCopyIcon />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{copied ? 'Copied!' : 'Copy to clipboard'}</p>
+                  <TooltipContent className={copyStatus === 'error' ? 'text-destructive' : undefined}>
+                    <p>{copyLabel(copyStatus, 'Copy to clipboard')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
+            <CopyErrorAlert message={copyError} onDismiss={dismissError} className="max-w-sm mx-auto" />
 
           </div>
         </CardContent>
