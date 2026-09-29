@@ -38,7 +38,7 @@ const CodeTextarea = ({ value = '', onChange, placeholder, readOnly, className }
         placeholder={placeholder}
         spellCheck={false}
         className={twMerge(
-          'flex-1 resize-none bg-transparent outline-none px-3 py-2 min-w-0',
+          'flex-1 resize-none bg-transparent outline-hidden px-3 py-2 min-w-0',
           className
         )}
         style={{ lineHeight: LINE_H }}

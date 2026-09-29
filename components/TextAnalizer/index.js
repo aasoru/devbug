@@ -45,11 +45,11 @@ const TextAnalizer = ({ description }) => {
         {description}
       </CardDescription>
 
-      <StatTitle className="order-3 mt-4 md:order-none md:mt-0 md:col-start-3 md:row-start-1 md:self-baseline">
+      <StatTitle className="order-3 mt-4 md:order-0 md:mt-0 md:col-start-3 md:row-start-1 md:self-baseline">
         Characters
       </StatTitle>
 
-      <div className="order-2 mt-2 md:order-none md:mt-0 md:col-span-2 md:row-start-2 flex flex-col gap-3">
+      <div className="order-2 mt-2 md:order-0 md:mt-0 md:col-span-2 md:row-start-2 flex flex-col gap-3">
         <Textarea
           className="min-h-64"
           value={text}
@@ -63,7 +63,7 @@ const TextAnalizer = ({ description }) => {
         />
       </div>
 
-      <div className="order-4 md:order-none md:col-start-3 md:row-start-2 flex flex-col gap-5">
+      <div className="order-4 md:order-0 md:col-start-3 md:row-start-2 flex flex-col gap-5">
         <StatGrid>
           <StatCard label="No spaces" value={text.replace(/\s/g, '').length} />
           <StatCard label="With spaces" value={text.length} />
