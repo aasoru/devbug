@@ -39,7 +39,7 @@ const JsonMinifier = () => {
       <div className="flex gap-2 mb-4">
         <Button onClick={() => process(null)}>Minify</Button>
         <Button variant="outline" onClick={() => process(2)}>Prettify</Button>
-        <Button variant="outline" onClick={copy} disabled={!output} className={copyStatus === 'error' ? 'text-destructive' : undefined}>
+        <Button variant="outline" onClick={copy} disabled={!output}>
           {copyLabel(copyStatus)}
         </Button>
       </div>

@@ -90,7 +90,7 @@ const JwtDecoder = () => {
           )}
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={copy} className={copyStatus === 'error' ? 'text-destructive' : undefined}>
+            <Button variant="outline" onClick={copy}>
               {copyLabel(copyStatus, 'Copy payload')}
             </Button>
           </div>

@@ -164,7 +164,7 @@ export default function ChmodCalculator() {
                       <ContentCopyIcon />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className={copyStatus === 'error' ? 'text-destructive' : undefined}>
+                  <TooltipContent>
                     <p>{copyLabel(copyStatus, 'Copy to clipboard')}</p>
                   </TooltipContent>
                 </Tooltip>

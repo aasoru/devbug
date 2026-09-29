@@ -4,7 +4,7 @@ import { twMerge } from 'tailwind-merge';
 
 const variants = {
   default: 'bg-background text-foreground',
-  destructive: 'border-destructive/50 text-destructive dark:border-destructive',
+  destructive: 'border-destructive/50 text-destructive dark:border-red-900 dark:bg-red-950/40 dark:text-red-300',
 };
 
 const Alert = React.forwardRef(({ className, variant = 'default', ...props }, ref) => (
