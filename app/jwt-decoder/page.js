@@ -8,7 +8,7 @@ import {
 
 export default function JwtDecoderPage() {
   return (
-    <div className="py-6">
+    <div>
       <Card>
         <CardTitle>JWT Decoder</CardTitle>
         <div className="py-4" />

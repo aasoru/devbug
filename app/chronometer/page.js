@@ -9,7 +9,7 @@ import {
 
 export default function Chronometer() {
   return (
-    <div className="py-6">
+    <div>
       {/* <Head title="Chronometer" /> */}
       <Card>
         <CardTitle>Chronometer</CardTitle>
