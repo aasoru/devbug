@@ -15,6 +15,14 @@ test.describe('Smoke', () => {
 });
 
 test.describe('Navigation', () => {
+  test('sidebar navigates client-side, without a full page reload', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => { window.__noReload = true; });
+    await page.locator('aside').getByRole('link', { name: 'Base64', exact: true }).click();
+    await expect(page).toHaveURL('/base64');
+    expect(await page.evaluate(() => window.__noReload)).toBe(true);
+  });
+
   for (const tool of TOOLS) {
     test(`sidebar → ${tool.path}`, async ({ page }) => {
       await page.goto('/');
@@ -73,6 +81,17 @@ test.describe('Mobile', () => {
 
     // Click the overlay, outside the sidebar (which is 5/6 of the width).
     await page.mouse.click(365, 400);
+    await expect(sidebar).not.toBeInViewport();
+  });
+
+  test('sidebar closes after navigating', async ({ page }) => {
+    await page.goto('/');
+    const sidebar = page.locator('aside');
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(sidebar).toBeInViewport();
+
+    await sidebar.getByRole('link', { name: 'JWT Decoder', exact: true }).click();
+    await expect(page).toHaveURL('/jwt-decoder');
     await expect(sidebar).not.toBeInViewport();
   });
 });
