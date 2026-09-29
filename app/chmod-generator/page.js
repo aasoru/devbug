@@ -65,7 +65,7 @@ export default function ChmodCalculator() {
 
   return (
     <div>
-      <Card>
+      <Card variant="page">
         <CardTitle>CHMOD Generator</CardTitle>
         <div className="py-4" />
         <CardDescription>

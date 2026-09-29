@@ -11,7 +11,7 @@ export default function Chronometer() {
   return (
     <div>
       {/* <Head title="Chronometer" /> */}
-      <Card>
+      <Card variant="page">
         <CardTitle>Chronometer</CardTitle>
         <div className="py-4" />
         <CardDescription>

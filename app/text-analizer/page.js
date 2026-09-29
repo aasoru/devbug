@@ -5,7 +5,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 export default function TextAnalizer() {
   return (
     <div>
-      <Card className="max-w-none">
+      <Card variant="page" className="max-w-none">
         <CardTitle>Text Analizer</CardTitle>
         <div className="py-4" />
         <CardContent>
