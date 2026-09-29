@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { twMerge } from 'tailwind-merge';
 
+// Card owns the padding (px-6 py-6); its sub-components add none, so everything aligns.
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -17,7 +18,7 @@ Card.displayName = 'Card';
 const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={twMerge('flex flex-col space-y-1.5 p-6', className)}
+    className={twMerge('flex flex-col space-y-1.5', className)}
     {...props}
   />
 ));
@@ -45,14 +46,14 @@ const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
 CardDescription.displayName = 'CardDescription';
 
 const CardContent = React.forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={twMerge('p-6 pt-0', className)} {...props} />
+  <div ref={ref} className={className} {...props} />
 ));
 CardContent.displayName = 'CardContent';
 
 const CardFooter = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={twMerge('flex items-center p-6 pt-0', className)}
+    className={twMerge('flex items-center', className)}
     {...props}
   />
 ));
