@@ -1,22 +1,15 @@
 import TextAnalizerComponent from '@/components/TextAnalizer';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 
 export default function TextAnalizer() {
   return (
-    <div className="py-6">
+    <div>
       <Card className="max-w-none">
         <CardTitle>Text Analizer</CardTitle>
         <div className="py-4" />
-        <CardDescription>Paste any text to get character, word, and line counts. Use the search field to count occurrences of a specific pattern.</CardDescription>
         <CardContent>
-          <div className="py-2" />
-          <TextAnalizerComponent />
+          <TextAnalizerComponent description="Paste any text to get character, word, and line counts. Use the search field to count occurrences of a specific pattern." />
         </CardContent>
       </Card>
     </div>
