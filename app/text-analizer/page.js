@@ -1,4 +1,3 @@
-//import Card from '@/components/Card';
 import TextAnalizerComponent from '@/components/TextAnalizer';
 
 import {
