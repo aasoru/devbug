@@ -16,9 +16,9 @@ import {
 } from '@/lib/chmod';
 
 const ENTITIES = [
-  { key: 'owner', label: 'Owner (u)' },
-  { key: 'group', label: 'Group (g)' },
-  { key: 'other', label: 'Others (o)' },
+  { key: 'owner', label: 'Owner', short: 'u' },
+  { key: 'group', label: 'Group', short: 'g' },
+  { key: 'other', label: 'Others', short: 'o' },
 ];
 
 const BITS = [
@@ -64,7 +64,7 @@ export default function ChmodCalculator() {
   const handleCopy = () => copyText(chmodCmd);
 
   return (
-    <>
+    <div>
       <Card>
         <CardTitle>CHMOD Generator</CardTitle>
         <div className="py-4" />
@@ -94,34 +94,38 @@ export default function ChmodCalculator() {
             </div>
 
             {/* Permission table */}
-            <table className="w-full max-w-2xl mx-auto">
-              <thead>
-                <tr>
-                  <th className="text-center p-2" />
-                  {ENTITIES.map((e) => (
-                    <th key={e.key} className="text-center p-2 font-medium">{e.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {BITS.map((bit) => (
-                  <tr key={bit.key}>
-                    <td className="text-center align-middle p-2 text-sm text-muted-foreground">
-                      {bit.label} ({bit.value})
-                    </td>
-                    {ENTITIES.map((entity) => (
-                      <td key={entity.key} className="text-center align-middle p-2">
-                        <Checkbox
-                          className="h-8 w-8 mx-auto"
-                          checked={perms[entity.key][bit.key]}
-                          onClick={() => toggle(entity.key, bit.key)}
-                        />
-                      </td>
+            <div className="overflow-x-auto">
+              <table className="w-full max-w-2xl mx-auto">
+                <thead>
+                  <tr>
+                    <th className="text-center p-1 sm:p-2" />
+                    {ENTITIES.map((e) => (
+                      <th key={e.key} className="text-center p-1 sm:p-2 font-medium">
+                        {e.label} <span className="whitespace-nowrap">({e.short})</span>
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {BITS.map((bit) => (
+                    <tr key={bit.key}>
+                      <td className="text-center align-middle p-1 sm:p-2 text-sm text-muted-foreground">
+                        {bit.label} ({bit.value})
+                      </td>
+                      {ENTITIES.map((entity) => (
+                        <td key={entity.key} className="text-center align-middle p-1 sm:p-2">
+                          <Checkbox
+                            className="h-8 w-8 mx-auto"
+                            checked={perms[entity.key][bit.key]}
+                            onClick={() => toggle(entity.key, bit.key)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Special bits */}
             <div className="flex flex-col gap-2">
@@ -175,6 +179,6 @@ export default function ChmodCalculator() {
           </div>
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }

@@ -31,7 +31,7 @@ const Base64 = () => {
 
   return (
     <>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <Button onClick={() => process(encode, 'Encoding failed.')}>Encode</Button>
         <Button variant="outline" onClick={() => process(decode, 'Invalid Base64 string.')}>Decode</Button>
         <Button variant="outline" onClick={copy} disabled={!output}>
