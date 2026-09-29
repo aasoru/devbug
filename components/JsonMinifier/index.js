@@ -4,12 +4,14 @@ import { useState } from 'react';
 import CodeTextarea from '@/components/ui/code-textarea';
 import { Button } from '@/components/ui/button';
 import { minify, prettify } from './lib';
+import { useCopyToClipboard, copyLabel } from '@/hooks/useCopyToClipboard';
+import CopyErrorAlert from '@/components/CopyErrorAlert';
 
 const JsonMinifier = () => {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { copy: copyText, status: copyStatus, error: copyError, dismissError } = useCopyToClipboard();
 
   const process = (indent) => {
     if (!input.trim()) return;
@@ -23,10 +25,7 @@ const JsonMinifier = () => {
   };
 
   const copy = () => {
-    if (!output) return;
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (output) copyText(output);
   };
 
   const inputBytes = new TextEncoder().encode(input).length;
@@ -41,9 +40,11 @@ const JsonMinifier = () => {
         <Button onClick={() => process(null)}>Minify</Button>
         <Button variant="outline" onClick={() => process(2)}>Prettify</Button>
         <Button variant="outline" onClick={copy} disabled={!output}>
-          {copied ? 'Copied!' : 'Copy'}
+          {copyLabel(copyStatus)}
         </Button>
       </div>
+
+      <CopyErrorAlert message={copyError} onDismiss={dismissError} className="mb-4" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">

@@ -31,7 +31,7 @@ const Sidebar = () => {
             'max-md:translate-x-0 max-md:shadow-[0px_0px_20px_0px] max-md:shadow-black'
         )}
       >
-        <Link href="/">
+        <Link href="/" onClick={() => setSidebarOpen(false)}>
           <div className="flex text-neutral-300 text-center p-4 items-center justify-center text-2xl">
             {'{'}
             <BugIcon />
@@ -137,18 +137,20 @@ const MenuItem = ({
   active,
   hasChilren = false,
 }) => {
+  const { setSidebarOpen } = useUI();
   //const { asPath } = useRouter();
   return (
     <li>
-      <a
+      <Link
         href={href}
+        onClick={() => setSidebarOpen(false)}
         className={twMerge(
           'flex items-center py-2 text-neutral-300 bg-neutral-700 pr-5 pl-7 hover:bg-neutral-600'
           //asPath === href && 'bg-neutral-600'
         )}
       >
         <div className="grow">{children}</div>
-      </a>
+      </Link>
     </li>
   );
 };
