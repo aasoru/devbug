@@ -96,6 +96,21 @@ test.describe('Mobile', () => {
   });
 });
 
+test.describe('Privacy', () => {
+  // No analytics or third-party scripts: every request must stay on our own origin.
+  for (const tool of [{ path: '/' }, ...TOOLS]) {
+    test(`${tool.path} makes no third-party requests`, async ({ page, baseURL }) => {
+      const external = [];
+      page.on('request', (req) => {
+        const url = new URL(req.url());
+        if (!['data:', 'blob:'].includes(url.protocol) && url.origin !== new URL(baseURL).origin) external.push(req.url());
+      });
+      await page.goto(tool.path, { waitUntil: 'networkidle' });
+      expect(external).toEqual([]);
+    });
+  }
+});
+
 test.describe('Assets', () => {
   test('opengraph image and favicon', async ({ request }) => {
     const og = await request.get('/opengraph-image');
