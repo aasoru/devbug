@@ -6,10 +6,9 @@ const UI = createContext({});
 
 export const UIProvider = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState('dark');
 
   return (
-    <UI.Provider value={{ sidebarOpen, setSidebarOpen, theme, setTheme }}>
+    <UI.Provider value={{ sidebarOpen, setSidebarOpen }}>
       {children}
     </UI.Provider>
   );

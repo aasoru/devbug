@@ -41,30 +41,50 @@ test.describe('Navigation', () => {
 });
 
 test.describe('Theme', () => {
-  test('switch to dark, persist on reload, close menu', async ({ page }) => {
+  const html = (page) => page.locator('html');
+  const stored = (page) => page.evaluate(() => localStorage.getItem('theme'));
+
+  for (const os of ['light', 'dark']) {
+    test(`starts from the OS preference (${os})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: os });
+      await page.goto('/');
+      const toggle = page.getByRole('button', { name: 'Dark mode' });
+      await expect(toggle).toHaveAttribute('aria-pressed', String(os === 'dark'));
+      if (os === 'dark') await expect(html(page)).toHaveClass(/\bdark\b/);
+      else await expect(html(page)).not.toHaveClass(/\bdark\b/);
+    });
+  }
+
+  test('toggles, persists on reload and goes back to following the OS', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.goto('/');
-    const toggle = page.getByRole('button', { name: 'Toggle theme' });
+    const toggle = page.getByRole('button', { name: 'Dark mode' });
 
     await toggle.click();
-    await expect(page.getByRole('menu')).toBeVisible();
-    await page.getByRole('menuitem', { name: 'Dark' }).click();
-    await expect(page.getByRole('menu')).toBeHidden();
-    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+    await expect(html(page)).toHaveClass(/\bdark\b/);
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(await stored(page)).toBe('dark');
 
     await page.reload();
-    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+    await expect(html(page)).toHaveClass(/\bdark\b/);
 
+    // Choosing the same theme as the OS stores "system", so OS changes are followed again.
     await toggle.click();
-    await page.getByRole('menuitem', { name: 'Light' }).click();
-    await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
+    await expect(html(page)).not.toHaveClass(/\bdark\b/);
+    expect(await stored(page)).toBe('system');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(html(page)).toHaveClass(/\bdark\b/);
+  });
 
-    await toggle.click();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('menu')).toBeHidden();
-
-    await toggle.click();
-    await page.getByRole('heading', { name: 'devbug', level: 1 }).click();
-    await expect(page.getByRole('menu')).toBeHidden();
+  test('works with the keyboard', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/');
+    const toggle = page.getByRole('button', { name: 'Dark mode' });
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(html(page)).toHaveClass(/\bdark\b/);
+    await page.keyboard.press('Space');
+    await expect(html(page)).not.toHaveClass(/\bdark\b/);
   });
 });
 
