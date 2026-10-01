@@ -26,4 +26,5 @@ export const TOOLS = [
   { path: '/json-minifier', title: 'JSON Minifier', sidebar: 'Json Minifier', card: 'Minify or prettify JSON with size comparison.' },
   { path: '/jwt-decoder', title: 'JWT Decoder', sidebar: 'JWT Decoder', card: 'Inspect JWT header, payload and expiry without a secret key.' },
   { path: '/base64', title: 'Base64 Encoder / Decoder', sidebar: 'Base64', card: 'Encode and decode Base64 with full UTF-8 support.' },
+  { path: '/mosaic', title: 'Mosaic', sidebar: 'Mosaic', card: 'Fit images of any size into a frame without cropping, with the least empty space.' },
 ];

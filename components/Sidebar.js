@@ -67,6 +67,11 @@ const Sidebar = () => {
               <span>Base64</span>
             </div>
           </MenuItem>
+          <MenuItem href="/mosaic">
+            <div className="flex items-center gap-3">
+              <span>Mosaic</span>
+            </div>
+          </MenuItem>
         </ul>
       </aside>
     </>

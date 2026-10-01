@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Binary, Braces, FileLock, KeyRound, TextSearch, Timer } from 'lucide-react';
+import { Binary, Braces, FileLock, KeyRound, LayoutDashboard, TextSearch, Timer } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const tools = [
@@ -38,6 +38,12 @@ const tools = [
     icon: Binary,
     title: 'Base64',
     description: 'Encode and decode Base64 with full UTF-8 support.',
+  },
+  {
+    href: '/mosaic',
+    icon: LayoutDashboard,
+    title: 'Mosaic',
+    description: 'Fit images of any size into a frame without cropping, with the least empty space.',
   },
 ];
 
