@@ -2,19 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { lockLandscape, unlockOrientation } from '../orientation';
+import { unlockOrientation } from '../orientation';
 
 const DOUBLE_TAP_MS = 300;
 
 const videosIn = (ref) => ref.current?.querySelectorAll('video') ?? [];
 const videoById = (ref, id) => [...videosIn(ref)].find((v) => v.dataset.id === id);
 
-// Opens the system's full screen player for a video: the Fullscreen API (turning the screen to
-// landscape for a wide video), or on iPhone Safari (which only allows full screen for videos)
-// its own player. onFail: it couldn't open.
+// Opens the system's full screen player for a video: the Fullscreen API, or on iPhone Safari
+// (which only allows full screen for videos) its own player. onFail: it couldn't open.
+// The orientation is left to the browser: forcing landscape here fought Chrome for Android's own
+// handling and threw the user out of full screen (portrait phone, wide video).
 const openPlayer = (video, onFail) => {
-  const wide = video.videoWidth > video.videoHeight;
-  if (video.requestFullscreen) video.requestFullscreen().then(() => { if (wide) lockLandscape(); }, onFail);
+  if (video.requestFullscreen) video.requestFullscreen().catch(onFail);
   else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
   else onFail();
 };
