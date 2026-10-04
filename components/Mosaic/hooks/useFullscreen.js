@@ -15,11 +15,14 @@ export function useFullscreen(ref, onEnter) {
   const canFullscreen = useCanFullscreen();
   const entered = useEffectEvent(onEnter);
 
-  // Native full screen also ends from the browser (Esc), so follow its events. A video opened
-  // in its own full screen player is inside the mosaic: the mosaic stays full screen behind it.
+  // Native full screen also ends from the browser (Esc), so follow its events. A video opened in
+  // its own full screen player (inside the mosaic) leaves the mosaic as it was — full screen or
+  // not — or the mosaic would relayout under it, drop the video and the player would close.
   useEffect(() => {
     const onChange = () => {
-      const active = Boolean(document.fullscreenElement) && Boolean(ref.current?.contains(document.fullscreenElement));
+      const element = document.fullscreenElement;
+      if (element && element !== ref.current && ref.current?.contains(element)) return;
+      const active = element === ref.current;
       setFullscreen(active);
       if (active) entered();
     };

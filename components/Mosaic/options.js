@@ -10,7 +10,13 @@ export const FRAMES = [
   { value: '9:16', label: '9:16', w: 9, h: 16 },
 ];
 
-export const GAPS = [0, 4, 8, 16].map((g) => ({ value: String(g), label: `${g}px` }));
+export const MAX_GAP = 64;
+
+// The gap in px from what the user typed: a whole number within 0..MAX_GAP (0 when empty).
+export function gapPx(raw) {
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isNaN(parsed) ? 0 : Math.min(MAX_GAP, Math.max(0, parsed));
+}
 
 export const SIZES = [
   { value: 'similar', label: 'Similar sizes' },
@@ -25,7 +31,7 @@ export const LEFTOVER = [
 
 export const DEFAULT_OPTIONS = {
   frame: 'screen',
-  gap: '4',
+  gap: '0', // as typed; gapPx() reads it
   sizes: 'similar',
   leftover: 'center',
   reorder: true, // the mosaic may change the order to fit better
