@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { layoutMosaic } from './layout';
-import { DEFAULT_OPTIONS } from './options';
+import { DEFAULT_OPTIONS, gapPx } from './options';
 import { useFrameSize } from './hooks/useFrameSize';
 import { useFullscreen } from './hooks/useFullscreen';
 import { useLocalFiles } from './hooks/useLocalFiles';
@@ -44,7 +44,7 @@ const Mosaic = () => {
   const { gap, leftover, sizes, reorder } = options;
   const layout = useMemo(
     // Rows or columns, whichever leaves less empty space.
-    () => layoutMosaic(items, { width: size.width, height: size.height, gap: Number(gap), leftover, sizes, reorder, flow: 'auto' }),
+    () => layoutMosaic(items, { width: size.width, height: size.height, gap: gapPx(gap), leftover, sizes, reorder, flow: 'auto' }),
     [items, size.width, size.height, gap, leftover, sizes, reorder]
   );
   const playback = useVideoPlayback(frameRef, layout);

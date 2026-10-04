@@ -47,6 +47,7 @@ function greedyPartition(ratios, width, height) {
 
 // Geometry of one partition: row heights at full width, and the scale that fits the frame.
 function measure(ratios, sizes, width, height, gap) {
+  if (sizes.some((n) => gap * (n - 1) >= width)) return null; // a row's gaps alone fill the width
   let start = 0;
   const rows = sizes.map((n) => {
     const r = ratios.slice(start, start + n).reduce((a, b) => a + b, 0);

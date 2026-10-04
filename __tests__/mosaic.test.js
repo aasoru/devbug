@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { layoutMosaic, MAX_ROW_RATIO, SIZE_PENALTY } from '@/components/Mosaic/layout';
+import { gapPx, MAX_GAP } from '@/components/Mosaic/options';
 import { DEFAULT_MEMES, MAX_MEMES, memeCount, pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
 import { checkFile, checkPixels, checkVideoResolution, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/limits';
 
@@ -164,6 +165,19 @@ describe('layoutMosaic leftover band', () => {
     expect(left).toBeGreaterThan(0);
   });
 
+  it('never lets the gaps take more than the frame, whatever the gap', () => {
+    for (const gap of [0, 16, 64, 200]) {
+      const r = layoutMosaic(ITEMS, { width: 640, height: 360, gap, reorder: true, flow: 'auto' });
+      expect(r.empty).toBeGreaterThanOrEqual(0);
+      expect(r.empty).toBeLessThanOrEqual(1);
+      r.tiles.forEach((t) => {
+        expect(t.width).toBeGreaterThan(0);
+        expect(t.x + t.width).toBeLessThanOrEqual(640 + EPS);
+        expect(t.y + t.height).toBeLessThanOrEqual(360 + EPS);
+      });
+    }
+  });
+
   it('handles empty input and impossible frames', () => {
     expect(layoutMosaic([], { width: 100, height: 100, reorder: true, flow: 'auto' }).tiles).toEqual([]);
     expect(layoutMosaic([], { width: 100, height: 100 }).tiles).toEqual([]);
@@ -270,6 +284,17 @@ describe('layoutMosaic reorder and columns', () => {
       expect(performance.now() - t).toBeLessThan(200);
       check(many.slice(0, n), PHONE, r);
     }
+  });
+});
+
+describe('gap option', () => {
+  it('reads what the user typed as whole px within 0..MAX_GAP', () => {
+    expect(gapPx('8')).toBe(8);
+    expect(gapPx('0')).toBe(0);
+    expect(gapPx('')).toBe(0); // empty while typing: no gap
+    expect(gapPx('-3')).toBe(0);
+    expect(gapPx('500')).toBe(MAX_GAP);
+    expect(gapPx('4.7')).toBe(4);
   });
 });
 

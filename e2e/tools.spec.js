@@ -456,6 +456,20 @@ test.describe('Mosaic', () => {
     await page.goto('/mosaic');
     await expect(page.getByLabel('Memes')).toHaveCount(0); // the count is asked with the memes, not in the options
 
+    // Gap: typed in px, 0 by default; out-of-range values are clamped when leaving the field.
+    await loadMemes(page);
+    await expect(tiles(page)).toHaveCount(12);
+    const gap = page.getByLabel('Gap (px)');
+    await expect(gap).toHaveValue('0');
+    const emptyShare = async () => Number((await page.getByTestId('mosaic-stats').textContent()).match(/empty space ([\d.]+)%/)[1]);
+    const noGap = await emptyShare();
+    await gap.fill('500');
+    await gap.blur();
+    await expect(gap).toHaveValue('64');
+    await expect.poll(emptyShare).toBeGreaterThan(noGap); // gaps take space from the images
+    await gap.fill('0');
+    await gap.blur();
+
     // How far the tiles reach, right and down (the band can be on either side: rows or columns),
     // once they stop moving (tiles animate to their new place).
     const reach = async () => {
@@ -472,7 +486,7 @@ test.describe('Mosaic', () => {
     };
     // One meme: memes are random, and some sets leave almost no band to spread. A single image
     // never matches the 9:16 frame exactly, so there's always a band.
-    await loadMemes(page, { count: 1 });
+    await loadMemes(page, { count: 1, name: 'Load other memes' });
     await expect(tiles(page)).toHaveCount(1);
     await page.getByLabel('Frame').selectOption('9:16');
     await page.getByLabel('Leftover space').selectOption('end');
@@ -696,6 +710,29 @@ test.describe('Mosaic — my files: videos', () => {
     await page.evaluate(() => document.exitFullscreen());
     await expect.poll(() => page.evaluate(() => document.fullscreenElement?.dataset.testid)).toBe('mosaic-root');
     await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
+  });
+
+  test('on a phone, the video player opens from the normal mosaic too, and the mosaic stays as it was', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/mosaic');
+    await page.getByTestId('mosaic-file-input').setInputFiles([await recordWebm(page, 320, 180, 'one.webm'), await recordWebm(page, 180, 320, 'two.webm')]);
+    await expect(videos(page)).toHaveCount(2);
+    const one = page.locator('video[aria-label="one.webm"]');
+    await one.evaluate((v) => { v.dataset.marker = 'same'; }); // to tell if the element gets replaced
+    await one.scrollIntoViewIfNeeded();
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+
+    await one.dblclick();
+    // The player stays open on the same element; behind it, the mosaic keeps its normal layout.
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => document.fullscreenElement?.dataset.marker)).toBe('same');
+    await expect(page.getByRole('button', { name: 'Show controls' })).toHaveCount(0);
+
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
+    await expect(page.getByRole('button', { name: 'Full screen' })).toBeVisible();
+    await expect(page.locator('video[data-marker="same"]')).toHaveCount(1);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore); // back where it was, not at the top
   });
 
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {
