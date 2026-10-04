@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { layoutMosaic, MAX_ROW_RATIO, SIZE_PENALTY } from '@/components/Mosaic/layout';
-import { pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
+import { DEFAULT_MEMES, MAX_MEMES, memeCount, pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
 import { checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/limits';
 
 const img = (id, width, height) => ({ id: String(id), width, height });
@@ -290,6 +290,16 @@ describe('pickSafeMemes', () => {
     const [m] = pickSafeMemes(memes, 1, () => 0);
     expect(Object.keys(m).sort()).toEqual(['height', 'id', 'name', 'url', 'width']);
     expect(pickSafeMemes(memes, 1)).toHaveLength(1);
+  });
+
+  it('memeCount keeps what the user typed within 1..81', () => {
+    expect(memeCount('6')).toBe(6);
+    expect(memeCount('0')).toBe(1);
+    expect(memeCount('-5')).toBe(1);
+    expect(memeCount('500')).toBe(MAX_MEMES);
+    expect(memeCount('7.9')).toBe(7);
+    expect(memeCount('')).toBe(DEFAULT_MEMES); // not a number: the fallback
+    expect(memeCount('abc', 20)).toBe(20);
   });
 
   it('the allowlist has the 81 reviewed templates', () => {

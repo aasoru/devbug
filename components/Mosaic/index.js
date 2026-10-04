@@ -71,9 +71,7 @@ const Mosaic = () => {
           adding: files.importing,
           addDisabled: files.importing || files.full,
           onAddFiles: pickFiles,
-          memesLoaded: memes.items.length > 0,
-          loadingMemes: memes.status === 'loading',
-          onLoadMemes: () => memes.load(),
+          memes,
         }}
         playback={{ ...playback, hasVideos: files.hasVideos }}
         hasItems={items.length > 0}
@@ -92,7 +90,7 @@ const Mosaic = () => {
         onChange={(e) => { files.add(e.target.files); e.target.value = ''; }}
       />
 
-      {showOptions && <OptionsPanel options={options} onChange={setOption} memes={memes} />}
+      {showOptions && <OptionsPanel options={options} onChange={setOption} />}
 
       {memes.status === 'error' && (
         <p role="alert" className="text-sm text-destructive">Couldn&apos;t load memes from imgflip.com. Try again later.</p>
