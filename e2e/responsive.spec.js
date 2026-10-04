@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 
 // No page may scroll horizontally on small phones, even with a larger system
 // text size (Firefox/Android accessibility setting, simulated via root font-size).
-const ROUTES = ['/', '/chronometer', '/text-analizer', '/chmod-generator', '/json-minifier', '/jwt-decoder', '/base64'];
+const ROUTES = ['/', '/chronometer', '/text-analizer', '/chmod-generator', '/json-minifier', '/jwt-decoder', '/base64', '/mosaic'];
 
 for (const width of [320, 360]) {
   for (const textSize of [100, 125]) {
