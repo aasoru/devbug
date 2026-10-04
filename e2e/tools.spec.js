@@ -254,7 +254,7 @@ test.describe('Mosaic', () => {
     await expect(page.getByLabel('Frame')).toBeVisible();
   });
 
-  test('full screen enlarges the mosaic and hides the options', async ({ page }) => {
+  test('full screen enlarges the mosaic and tucks the controls into a bottom sheet', async ({ page }) => {
     await mockImgflip(page);
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto('/mosaic');
@@ -264,13 +264,15 @@ test.describe('Mosaic', () => {
 
     await page.getByRole('button', { name: 'Full screen' }).click();
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
-    await expect(page.getByLabel('Frame')).toBeHidden(); // options collapse to give the mosaic room
+    await expect(page.getByLabel('Frame')).toBeHidden(); // controls tucked away: the mosaic gets the screen
     await expect.poll(async () => (await page.getByTestId('mosaic-frame').boundingBox()).width).toBeGreaterThan(before.width);
     await expect(tiles(page)).toHaveCount(12);
 
-    // Options can still be opened in full screen.
-    await page.getByRole('button', { name: 'Show options' }).click();
+    // The handle at the bottom opens the controls: toolbar and options together.
+    await page.getByRole('button', { name: 'Show controls' }).click();
+    await expect(page.getByRole('dialog', { name: 'Mosaic controls' })).toBeVisible();
     await expect(page.getByLabel('Frame')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Hide options' })).toHaveCount(0); // always shown here
 
     await page.getByRole('button', { name: 'Exit full screen' }).click();
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
@@ -350,7 +352,7 @@ test.describe('Mosaic', () => {
     await expect(memesForm(page)).toBeHidden();
   });
 
-  test('on a phone, full screen with the "Screen" frame fills the whole height', async ({ page }) => {
+  test('on a phone, full screen goes edge to edge; the controls slide up from a handle', async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(Document.prototype, 'fullscreenEnabled', { get: () => false });
     });
@@ -361,14 +363,64 @@ test.describe('Mosaic', () => {
     await loadMemes(page);
     await page.getByRole('button', { name: 'Full screen' }).click();
 
-    // The toolbar shrinks to one row of icons, and the frame takes everything below it.
-    const bar = await page.getByRole('button', { name: 'Exit full screen' }).boundingBox();
-    const frame = await page.getByTestId('mosaic-frame').boundingBox();
-    expect(bar.y).toBeLessThan(20);
-    expect(frame.y).toBeLessThan(bar.y + bar.height + 20);
-    expect(frame.y + frame.height).toBeGreaterThan(844 - 20);
-    expect(frame.width).toBeGreaterThan(390 - 20);
+    // The "Screen" frame takes the whole viewport: no toolbar, no padding, no border.
+    await expect.poll(() => page.getByTestId('mosaic-frame').boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 844 });
+    expect(await page.getByTestId('mosaic-frame').evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('0px');
     await expect(page.getByTestId('mosaic-stats')).toBeHidden();
+
+    const sheet = page.getByRole('dialog', { name: 'Mosaic controls' });
+    const handle = page.getByRole('button', { name: 'Show controls' });
+    await expect(sheet).toBeHidden();
+    // Open = visible and done sliding in (it animates for 300 ms): its bottom edge is on the
+    // bottom of the screen.
+    const opened = async () => {
+      await expect(sheet).toBeVisible();
+      await expect.poll(async () => { const b = await sheet.boundingBox(); return Math.round(b.y + b.height); }).toBe(844);
+    };
+    const drag = async (locator, dy) => {
+      const box = await locator.boundingBox();
+      const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x, y + dy / 2);
+      await page.mouse.move(x, y + dy);
+      await page.mouse.up();
+    };
+
+    // Drag the handle up: the sheet opens with the toolbar and the options.
+    await drag(handle, -60);
+    await opened();
+    await expect(sheet.getByRole('button', { name: 'Exit full screen' })).toBeVisible();
+    await expect(sheet.getByLabel('Frame')).toBeVisible();
+
+    // Esc in the memes popover closes only the popover; the next Esc closes the sheet.
+    await sheet.getByRole('button', { name: 'More ways to add' }).click();
+    await expect(memesForm(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(memesForm(page)).toBeHidden();
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+    await expect(page.getByTestId('mosaic-root')).toHaveClass(/fixed/); // still in full screen
+
+    // Drag the grip down: the sheet closes. A short drag snaps back instead.
+    await handle.click();
+    await opened();
+    await drag(sheet.getByRole('button', { name: 'Close' }), 30);
+    await opened();
+    await drag(sheet.getByRole('button', { name: 'Close' }), 150);
+    await expect(sheet).toBeHidden();
+
+    // A tap on the mosaic outside the open sheet closes it, and only that: the meme underneath
+    // doesn't open imgflip.com.
+    await handle.click();
+    await opened();
+    const popups = [];
+    page.context().on('page', (p) => popups.push(p.url()));
+    await page.mouse.click(195, 100);
+    await expect(sheet).toBeHidden();
+    await page.waitForTimeout(300);
+    expect(popups).toEqual([]);
   });
 
   test('"Reorder to fit" is on by default and can be turned off', async ({ page }) => {
@@ -579,6 +631,10 @@ test.describe('Mosaic — my files: videos', () => {
     await page.locator('video[aria-label="one.webm"]').click();
     await expect.poll(muted).toEqual({ 'one.webm': false, 'two.webm': true, 'three.webm': true });
     await expect(page.getByRole('button', { name: 'Sound for one.webm' })).toHaveAttribute('aria-pressed', 'true');
+    // Only the video with sound shows the speaker icon; muted ones don't.
+    const shown = (name) => page.getByRole('button', { name: `Sound for ${name}` }).evaluate((b) => getComputedStyle(b).opacity);
+    await expect.poll(() => shown('one.webm')).toBe('1');
+    await expect.poll(() => shown('two.webm')).toBe('0');
     await expect.poll(() => page.locator('video[aria-label="one.webm"]').evaluate((v) => !v.paused)).toBe(true); // unmuting doesn't pause it
 
     await page.locator('video[aria-label="two.webm"]').click(); // sound moves to another video
@@ -587,8 +643,10 @@ test.describe('Mosaic — my files: videos', () => {
     await page.locator('video[aria-label="two.webm"]').click(); // clicking it again mutes everything
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': true });
 
-    // Keyboard: the speaker button does the same.
+    // Keyboard: the speaker button does the same, and shows up when it gets focus.
+    await page.keyboard.press('Shift'); // a key press first, so the focus counts as keyboard focus (:focus-visible)
     await page.getByRole('button', { name: 'Sound for three.webm' }).focus();
+    await expect.poll(() => shown('three.webm')).toBe('1');
     await page.keyboard.press('Enter');
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': false });
   });

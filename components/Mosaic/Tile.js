@@ -28,7 +28,8 @@ function Picture({ item, playback }) {
   );
 }
 
-// Sound on/off for one video (the keyboard-friendly twin of clicking the video).
+// Sound on/off for one video (the keyboard-friendly twin of clicking the video). Only the video
+// with sound shows it; on muted ones it's invisible until reached with the keyboard.
 function SoundButton({ item, playback }) {
   const on = playback.audioId === item.id;
   return (
@@ -37,7 +38,10 @@ function SoundButton({ item, playback }) {
       aria-label={`Sound for ${item.name}`}
       aria-pressed={on}
       onClick={() => playback.toggleAudio(item.id)}
-      className={twMerge('absolute bottom-1 left-1 rounded-full p-1 text-white', on ? 'bg-primary text-primary-foreground' : 'bg-black/60')}
+      className={twMerge(
+        'absolute bottom-1 left-1 rounded-full p-1 text-white transition-opacity',
+        on ? 'bg-primary text-primary-foreground' : 'bg-black/60 opacity-0 focus-visible:opacity-100'
+      )}
     >
       {on ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
     </button>
