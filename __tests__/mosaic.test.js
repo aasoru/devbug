@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { layoutMosaic, MAX_ROW_RATIO, SIZE_PENALTY } from '@/components/Mosaic/layout';
 import { DEFAULT_MEMES, MAX_MEMES, memeCount, pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
-import { checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/limits';
+import { checkFile, checkPixels, checkVideoResolution, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/limits';
 
 const img = (id, width, height) => ({ id: String(id), width, height });
 const EPS = 1e-6;
@@ -338,9 +338,16 @@ describe('local videos', () => {
   const MB = 1024 * 1024;
   const file = (name, type) => ({ name, type, size: 1 });
 
-  it('videos can be up to 200 MB', () => {
-    expect(checkFile({ name: 'clip.mp4', type: 'video/mp4', size: 150 * MB })).toBeNull();
-    expect(checkFile({ name: 'long.mov', type: 'video/quicktime', size: 201 * MB })).toBe('long.mov: too large (201.0 MB, max 200 MB)');
+  it('videos can be up to 4 GB', () => {
+    expect(checkFile({ name: 'clip.mp4', type: 'video/mp4', size: 3.9 * 1024 * MB })).toBeNull();
+    expect(checkFile({ name: 'long.mov', type: 'video/quicktime', size: 4.2 * 1024 * MB })).toBe('long.mov: too large (4.2 GB, max 4 GB)');
+  });
+
+  it('videos can be up to 4K, in either orientation', () => {
+    expect(checkVideoResolution('uhd.mp4', 3840, 2160)).toBeNull();
+    expect(checkVideoResolution('dci.mp4', 4096, 2160)).toBeNull();
+    expect(checkVideoResolution('phone.mp4', 2160, 3840)).toBeNull(); // portrait 4K
+    expect(checkVideoResolution('8k.mp4', 7680, 4320)).toBe('8k.mp4: resolution too high (7680×4320, max 4K)');
   });
 
   it('at most 10 videos, counting only those actually added', () => {

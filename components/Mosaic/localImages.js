@@ -1,4 +1,4 @@
-import { checkFile, checkPixels, fileKind, fitWithin, LOCAL_LIMITS } from './limits';
+import { checkFile, checkPixels, checkVideoResolution, fileKind, fitWithin, LOCAL_LIMITS } from './limits';
 
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image();
@@ -73,6 +73,11 @@ export async function importVideo(file, limits = LOCAL_LIMITS) {
   if (!size || !(size.width > 0 && size.height > 0)) {
     URL.revokeObjectURL(url);
     return { error: `${file.name}: this browser can't play this video format` };
+  }
+  const tooSharp = checkVideoResolution(file.name, size.width, size.height, limits);
+  if (tooSharp) {
+    URL.revokeObjectURL(url);
+    return { error: tooSharp };
   }
   return { image: { id: crypto.randomUUID(), kind: 'video', name: file.name, url, ...size, source: 'local' } };
 }

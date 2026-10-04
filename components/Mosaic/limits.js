@@ -1,27 +1,33 @@
 // Local files: read in the browser (object URLs), never uploaded. Limits protect the device:
 // - images: a decoded image takes 4 bytes per pixel whatever its display size (a 48 MP photo is
 //   ~195 MB), so they are downscaled on import and only the copy is kept;
-// - videos: they can't be downscaled without re-encoding (a heavy dependency), and each playing
-//   video costs CPU/GPU, so only a few are allowed; they play muted and looped.
+// - videos: they can't be downscaled without re-encoding (a heavy dependency). They play straight
+//   from the file (not copied into memory); what costs is decoding them, which grows with the
+//   resolution, so it's capped at 4K, as is how many play at once. They play muted and looped.
 export const LOCAL_LIMITS = {
   maxFiles: 20, // images + videos
   maxBytes: 30 * 1024 * 1024, // 30 MB per image
   maxPixels: 50_000_000, // 50 MP before downscaling (fits 48 MP phone photos)
   maxSide: 2048, // long side of the image copy that is kept
   maxVideos: 10,
-  maxVideoBytes: 200 * 1024 * 1024, // 200 MB per video
+  maxVideoBytes: 4 * 1024 * 1024 * 1024, // 4 GB per video: played from the file, not loaded into memory
+  maxVideoPixels: 4096 * 2160, // 4K (DCI, so UHD 3840×2160 fits), either orientation
 };
 
 export const fileKind = (type = '') => (type.startsWith('image/') ? 'image' : type.startsWith('video/') ? 'video' : null);
 
 const MB = 1024 * 1024;
+const GB = 1024 * MB;
+
+// "31.0 MB", "4.2 GB"; limits read best whole: "30 MB", "4 GB".
+export const formatSize = (bytes, digits = 1) => (bytes >= GB ? `${(bytes / GB).toFixed(digits)} GB` : `${(bytes / MB).toFixed(digits)} MB`);
 
 // Before decoding: is it an image or a video, and not too heavy? Returns an error message or null.
 export function checkFile({ name, type, size }, limits = LOCAL_LIMITS) {
   const kind = fileKind(type);
   if (!kind) return `${name}: not an image or a video`;
   const max = kind === 'video' ? limits.maxVideoBytes : limits.maxBytes;
-  if (size > max) return `${name}: too large (${(size / MB).toFixed(1)} MB, max ${max / MB} MB)`;
+  if (size > max) return `${name}: too large (${formatSize(size)}, max ${formatSize(max, 0)})`;
   return null;
 }
 
@@ -46,6 +52,12 @@ export function checkPixels(name, width, height, limits = LOCAL_LIMITS) {
   if (!(width > 0 && height > 0)) return `${name}: couldn't read the image size`;
   const mp = (width * height) / 1e6;
   if (width * height > limits.maxPixels) return `${name}: too large (${mp.toFixed(0)} MP, max ${limits.maxPixels / 1e6} MP)`;
+  return null;
+}
+
+// After reading a video's size: at most 4K? Returns an error message or null.
+export function checkVideoResolution(name, width, height, limits = LOCAL_LIMITS) {
+  if (width * height > limits.maxVideoPixels) return `${name}: resolution too high (${width}×${height}, max 4K)`;
   return null;
 }
 

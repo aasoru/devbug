@@ -640,7 +640,8 @@ test.describe('Mosaic — my files: videos', () => {
     await page.locator('video[aria-label="two.webm"]').click(); // sound moves to another video
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': false, 'three.webm': true });
 
-    await page.locator('video[aria-label="two.webm"]').click(); // clicking it again mutes everything
+    await page.waitForTimeout(400); // a second tap right away would be a double tap
+    await page.locator('video[aria-label="two.webm"]').click(); // tapping it again mutes everything
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': true });
 
     // Keyboard: the speaker button does the same, and shows up when it gets focus.
@@ -649,6 +650,52 @@ test.describe('Mosaic — my files: videos', () => {
     await expect.poll(() => shown('three.webm')).toBe('1');
     await page.keyboard.press('Enter');
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': false });
+  });
+
+  test('a double tap opens the video full screen with sound and controls; leaving mutes it', async ({ page }) => {
+    await page.goto('/mosaic');
+    const clips = [await recordWebm(page, 320, 180, 'one.webm'), await recordWebm(page, 180, 320, 'two.webm')];
+    await page.getByTestId('mosaic-file-input').setInputFiles(clips);
+    await expect(videos(page)).toHaveCount(2);
+    const one = page.locator('video[aria-label="one.webm"]');
+    const state = () => one.evaluate((v) => ({ fullscreen: document.fullscreenElement === v, muted: v.muted, controls: v.controls }));
+
+    await one.dblclick();
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+
+    await page.evaluate(() => document.exitFullscreen()); // what back / Esc / the player's button do
+    await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
+
+    // A video that already had sound keeps it on leaving the player; the rest stay muted.
+    await one.click();
+    await expect.poll(() => one.evaluate((v) => v.muted)).toBe(false);
+    await page.waitForTimeout(400); // so the double tap below isn't joined to this tap
+    await one.dblclick();
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(state).toEqual({ fullscreen: false, muted: false, controls: false });
+    await expect(page.getByRole('button', { name: 'Sound for one.webm' })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => page.locator('video[aria-label="two.webm"]').evaluate((v) => v.muted)).toBe(true);
+
+    // Muted with the player's controls: it leaves muted, even though it had sound before.
+    await page.waitForTimeout(400);
+    await one.dblclick();
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+    await one.evaluate((v) => { v.muted = true; }); // the player's mute button
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
+    await expect(page.getByRole('button', { name: 'Sound for one.webm' })).toHaveAttribute('aria-pressed', 'false');
+    await page.waitForTimeout(400);
+
+    // From a full screen mosaic: leaving the video returns to the mosaic, still full screen.
+    await page.getByRole('button', { name: 'Full screen' }).click();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.dataset.testid)).toBe('mosaic-root');
+    await one.dblclick();
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+    await expect(page.getByRole('button', { name: 'Show controls' })).toBeAttached(); // the mosaic stays in full screen layout behind
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.dataset.testid)).toBe('mosaic-root');
+    await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
   });
 
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {

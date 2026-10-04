@@ -3,9 +3,11 @@ import { twMerge } from 'tailwind-merge';
 
 const TILE = 'absolute transition-all duration-300';
 
-// The image or video itself, filling its tile.
+// The image or video itself, filling its tile. A video in the full screen player shows its
+// controls there, and taps go to them instead of toggling the sound.
 function Picture({ item, playback }) {
   if (item.kind === 'video') {
+    const inPlayer = playback.playerId === item.id;
     return (
       // Muted + playsInline: required for autoplay (iPhone Safari won't autoplay otherwise).
       <video
@@ -17,7 +19,8 @@ function Picture({ item, playback }) {
         playsInline
         autoPlay={playback.playing}
         preload="auto"
-        onClick={() => playback.toggleAudio(item.id)}
+        controls={inPlayer}
+        onClick={inPlayer ? undefined : () => playback.tap(item.id)}
         className="h-full w-full cursor-pointer"
       />
     );
