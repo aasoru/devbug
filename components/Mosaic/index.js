@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ChevronDown, ImagePlus, Maximize, Minimize, Pause, Play, SlidersHorizontal, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronDown, ImagePlus, Laugh, Maximize, Minimize, Pause, Play, SlidersHorizontal, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 
 import { Button } from '@/components/ui/button';
@@ -9,16 +9,14 @@ import { Input } from '@/components/ui/input';
 import { IMGFLIP_API, LOCAL_LIMITS, layoutMosaic, limitMessages, overLimit, pickSafeMemes, SAFE_MEME_IDS } from './lib';
 import { importFile } from './localImages';
 
+// "Screen" takes the window's shape, and in full screen all the space left for the mosaic.
 const FRAMES = [
+  { value: 'screen', label: 'Screen' },
   { value: '16:9', w: 16, h: 9 },
   { value: '4:3', w: 4, h: 3 },
   { value: '1:1', w: 1, h: 1 },
   { value: '3:4', w: 3, h: 4 },
   { value: '9:16', w: 9, h: 16 },
-];
-const SOURCES = [
-  { value: 'memes', label: 'Random memes' },
-  { value: 'local', label: 'My files' },
 ];
 const MIN_COUNT = 1;
 const MAX_COUNT = SAFE_MEME_IDS.size; // can't show more memes than the reviewed ones
@@ -56,14 +54,17 @@ const Select = ({ label, value, onChange, options }) => (
 
 // Space available for the frame: the container's width and a height cap — 75% of the window
 // normally, or all the container's height when expanded (where it fills the rest of the screen).
+// The window's size gives the "Screen" frame its shape.
 function useBox(ref, expanded) {
-  const [box, setBox] = useState({ width: 0, maxHeight: 0 });
+  const [box, setBox] = useState({ width: 0, maxHeight: 0, windowWidth: 16, windowHeight: 9 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const update = () => setBox({
       width: el.clientWidth,
       maxHeight: expanded ? el.clientHeight : Math.max(320, Math.round(window.innerHeight * 0.75)),
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
     });
     update();
     const ro = new ResizeObserver(update);
@@ -80,8 +81,7 @@ const noop = () => () => {};
 const useCanFullscreen = () => useSyncExternalStore(noop, () => Boolean(document.fullscreenEnabled), () => false);
 
 const Mosaic = () => {
-  const [source, setSource] = useState('memes');
-  const [frame, setFrame] = useState('16:9');
+  const [frame, setFrame] = useState('screen');
   const [count, setCount] = useState(12);
   const [countDraft, setCountDraft] = useState('12'); // what the user is typing
   const countTimer = useRef(null);
@@ -89,7 +89,8 @@ const Mosaic = () => {
   const [leftover, setLeftover] = useState('center');
   const [sizes, setSizes] = useState('similar');
 
-  // Memes (imgflip) and the user's own images are kept apart: switching source keeps both.
+  // Memes (imgflip) and the user's own files share the mosaic; each list is managed on its own
+  // (loading other memes keeps the files, and the other way round).
   const [memes, setMemes] = useState([]);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const templates = useRef(null);
@@ -102,8 +103,11 @@ const Mosaic = () => {
   const frameRef = useRef(null);
   const fileInput = useRef(null);
   const localRef = useRef([]); // latest local images, for limits and cleanup outside render
+  const [menuOpen, setMenuOpen] = useState(false); // the arrow next to "Add files"
+  const menuRef = useRef(null);
+  const menuButton = useRef(null);
 
-  const images = source === 'local' ? localImages : memes;
+  const images = useMemo(() => [...localImages, ...memes], [localImages, memes]);
 
   const rootRef = useRef(null);
   const containerRef = useRef(null);
@@ -151,10 +155,11 @@ const Mosaic = () => {
   useEffect(() => () => localRef.current.forEach((img) => URL.revokeObjectURL(img.url)), []);
 
   const size = useMemo(() => {
-    const f = FRAMES.find((x) => x.value === frame);
+    if (frame === 'screen' && expanded) return { width: Math.floor(box.width), height: Math.floor(box.maxHeight) };
+    const f = frame === 'screen' ? { w: box.windowWidth, h: box.windowHeight } : FRAMES.find((x) => x.value === frame);
     const width = Math.min(box.width, (box.maxHeight * f.w) / f.h);
     return { width: Math.floor(width), height: Math.floor((width * f.h) / f.w) };
-  }, [box, frame]);
+  }, [box, frame, expanded]);
 
   const layout = useMemo(
     () => layoutMosaic(images, { ...size, gap: Number(gap), leftover, sizes }),
@@ -224,18 +229,42 @@ const Mosaic = () => {
     setLocalImages((prev) => prev.filter((x) => x.id !== id));
   };
 
+  // Clear empties the whole mosaic: the user's files and the memes.
   const clearImages = () => {
     localImages.forEach((img) => URL.revokeObjectURL(img.url));
     setLocalImages([]);
+    setMemes([]);
+    setStatus('idle');
     setAudioId(null);
     setNotices([]);
   };
 
-  const dropHandlers = source === 'local' ? {
+  const pickFiles = () => fileInput.current?.click();
+
+  // Menu of the arrow next to "Add files" (built by hand, no Radix): focus moves into it when it
+  // opens; Esc or a click outside closes it, and Esc gives focus back to the arrow.
+  useEffect(() => {
+    if (!menuOpen) return;
+    menuRef.current?.querySelector('[role="menuitem"]')?.focus();
+    const onPointer = (e) => { if (!menuRef.current?.parentElement.contains(e.target)) setMenuOpen(false); };
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation(); // Esc closes the menu, not the full screen overlay
+      setMenuOpen(false);
+      menuButton.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey, true); };
+  }, [menuOpen]);
+
+  const loadMemes = () => { setMenuOpen(false); load(); };
+
+  const dropHandlers = {
     onDragOver: (e) => { e.preventDefault(); setDragging(true); },
     onDragLeave: () => setDragging(false),
     onDrop: (e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); },
-  } : {};
+  };
 
   // Sound for one video at a time: clicking a video turns its sound on and mutes the rest;
   // clicking it again mutes it. `muted` is set on the elements right here, inside the click,
@@ -256,119 +285,134 @@ const Mosaic = () => {
 
   const bandLabel = { none: 'none', bottom: 'vertical', side: 'horizontal' }[layout.band];
   const full = localImages.length >= LOCAL_LIMITS.maxFiles;
-  const hasVideos = source === 'local' && localImages.some((x) => x.kind === 'video');
+  const hasVideos = localImages.some((x) => x.kind === 'video');
+  // In full screen the toolbar shrinks to icons (names stay for screen readers, and as tooltips)
+  // so it fits one row on a phone and leaves the rest of the height to the mosaic.
+  const icon = expanded ? 'h-4 w-4' : 'h-4 w-4 mr-2';
+  const text = (label) => <span className={expanded ? 'sr-only' : undefined}>{label}</span>;
+  const tip = (label) => (expanded ? label : undefined);
 
   return (
     <div
       ref={rootRef}
       data-testid="mosaic-root"
       className={
-        overlay ? 'fixed inset-0 z-50 flex h-dvh flex-col gap-3 overflow-auto bg-background p-4 text-foreground'
-          : fullscreen ? 'flex h-full flex-col gap-3 overflow-auto bg-background p-4 text-foreground'
+        overlay ? 'fixed inset-0 z-50 flex h-dvh flex-col gap-2 overflow-auto bg-background p-2 text-foreground'
+          : fullscreen ? 'flex h-full flex-col gap-2 overflow-auto bg-background p-2 text-foreground'
             : 'flex flex-col gap-4'
       }
     >
-      <div className="flex flex-wrap items-center gap-3">
-        {source === 'memes' ? (
-          <Button onClick={() => load()} disabled={status === 'loading'}>
-            {status === 'loading' ? 'Loading…' : memes.length ? 'Load other memes' : 'Load random memes'}
+      <div className={twMerge('flex flex-wrap items-center', expanded ? 'gap-2' : 'gap-3')}>
+        <div className="relative inline-flex">
+          <Button onClick={pickFiles} disabled={importing || full} title={tip('Add files')} className="rounded-r-none">
+            <ImagePlus className={icon} aria-hidden="true" />
+            {text(importing ? 'Adding…' : 'Add files')}
           </Button>
-        ) : (
-          <>
-            <Button onClick={() => fileInput.current?.click()} disabled={importing || full}>
-              <ImagePlus className="h-4 w-4 mr-2" aria-hidden="true" />
-              {importing ? 'Adding…' : 'Add files'}
-            </Button>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              hidden
-              data-testid="mosaic-file-input"
-              onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
-            />
-            {hasVideos && (
-              <Button variant="outline" onClick={() => setPlaying((p) => !p)}>
-                {playing
-                  ? <Pause className="h-4 w-4 mr-2" aria-hidden="true" />
-                  : <Play className="h-4 w-4 mr-2" aria-hidden="true" />}
-                {playing ? 'Pause all' : 'Play all'}
-              </Button>
-            )}
-            {localImages.length > 0 && (
-              <Button variant="outline" onClick={clearImages}>
-                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
-                Clear
-              </Button>
-            )}
-          </>
+          <Button
+            ref={menuButton}
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="More ways to add"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls="mosaic-add-menu"
+            className="rounded-l-none border-l border-primary-foreground/20 px-2"
+          >
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {menuOpen && (
+            <div ref={menuRef} id="mosaic-add-menu" role="menu" className="absolute left-0 top-full z-10 mt-1 min-w-max rounded-md border bg-background p-1 shadow-md">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={loadMemes}
+                disabled={status === 'loading'}
+                className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:outline-hidden disabled:opacity-50"
+              >
+                <Laugh className="h-4 w-4 mr-2" aria-hidden="true" />
+                {memes.length ? 'Load other memes' : 'Load random memes'}
+              </button>
+            </div>
+          )}
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          hidden
+          data-testid="mosaic-file-input"
+          onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+        />
+        {hasVideos && (
+          <Button variant="outline" onClick={() => setPlaying((p) => !p)} title={tip(playing ? 'Pause all' : 'Play all')}>
+            {playing
+              ? <Pause className={icon} aria-hidden="true" />
+              : <Play className={icon} aria-hidden="true" />}
+            {text(playing ? 'Pause all' : 'Play all')}
+          </Button>
+        )}
+        {images.length > 0 && (
+          <Button variant="outline" onClick={clearImages} title={tip('Clear')}>
+            <Trash2 className={icon} aria-hidden="true" />
+            {text('Clear')}
+          </Button>
         )}
         <Button
           variant="outline"
           onClick={() => setShowOptions((v) => !v)}
           aria-expanded={showOptions}
           aria-controls="mosaic-options"
+          title={tip(showOptions ? 'Hide options' : 'Show options')}
         >
-          <SlidersHorizontal className="h-4 w-4 mr-2" aria-hidden="true" />
-          {showOptions ? 'Hide options' : 'Show options'}
+          <SlidersHorizontal className={icon} aria-hidden="true" />
+          {text(showOptions ? 'Hide options' : 'Show options')}
         </Button>
-        <Button variant="outline" onClick={toggleFullscreen}>
+        <Button variant="outline" onClick={toggleFullscreen} title={tip('Exit full screen')}>
           {expanded
-            ? <Minimize className="h-4 w-4 mr-2" aria-hidden="true" />
-            : <Maximize className="h-4 w-4 mr-2" aria-hidden="true" />}
-          {expanded ? 'Exit full screen' : 'Full screen'}
+            ? <Minimize className={icon} aria-hidden="true" />
+            : <Maximize className={icon} aria-hidden="true" />}
+          {text(expanded ? 'Exit full screen' : 'Full screen')}
         </Button>
         {!expanded && (
           <p className="text-xs text-muted-foreground">
-            {source === 'memes' ? (
-              <>
-                Images load from{' '}
-                <a href="https://imgflip.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">imgflip.com</a>{' '}
-                only when you press the button. Nothing loads until then.
-              </>
-            ) : (
-              <>
-                Your files stay on this device — nothing is uploaded. Up to {LOCAL_LIMITS.maxFiles} files:{' '}
-                images up to {LOCAL_LIMITS.maxBytes / (1024 * 1024)} MB and {LOCAL_LIMITS.maxPixels / 1e6} MP (scaled down to {LOCAL_LIMITS.maxSide} px),{' '}
-                and {LOCAL_LIMITS.maxVideos} videos up to {LOCAL_LIMITS.maxVideoBytes / (1024 * 1024)} MB. Videos play muted: click one to hear it (one at a time).
-              </>
-            )}
+            Your files stay on this device — nothing is uploaded. Up to {LOCAL_LIMITS.maxFiles} files:{' '}
+            images up to {LOCAL_LIMITS.maxBytes / (1024 * 1024)} MB and {LOCAL_LIMITS.maxPixels / 1e6} MP (scaled down to {LOCAL_LIMITS.maxSide} px),{' '}
+            and {LOCAL_LIMITS.maxVideos} videos up to {LOCAL_LIMITS.maxVideoBytes / (1024 * 1024)} MB. Videos play muted: click one to hear it (one at a time).{' '}
+            Memes load from{' '}
+            <a href="https://imgflip.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">imgflip.com</a>{' '}
+            only when you pick “Load random memes” from the arrow next to “Add files”.
           </p>
         )}
       </div>
 
       {showOptions && (
-        <div id="mosaic-options" className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-          <Select label="Source" value={source} onChange={setSource} options={SOURCES} />
-          <Select label="Frame" value={frame} onChange={setFrame} options={FRAMES.map((f) => ({ value: f.value, label: f.value }))} />
-          {source === 'memes' && (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">Images</span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={MIN_COUNT}
-                max={MAX_COUNT}
-                step={1}
-                value={countDraft}
-                onChange={(e) => onCountChange(e.target.value)}
-                onBlur={(e) => applyCount(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') applyCount(e.currentTarget.value); }}
-              />
-            </label>
-          )}
+        <div id="mosaic-options" className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <Select label="Frame" value={frame} onChange={setFrame} options={FRAMES.map((f) => ({ value: f.value, label: f.label ?? f.value }))} />
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Memes</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={MIN_COUNT}
+              max={MAX_COUNT}
+              step={1}
+              value={countDraft}
+              onChange={(e) => onCountChange(e.target.value)}
+              onBlur={(e) => applyCount(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') applyCount(e.currentTarget.value); }}
+            />
+          </label>
           <Select label="Gap" value={gap} onChange={setGap} options={GAPS.map((g) => ({ value: String(g), label: `${g}px` }))} />
           <Select label="Sizes" value={sizes} onChange={setSizes} options={SIZES} />
           <Select label="Leftover space" value={leftover} onChange={setLeftover} options={LEFTOVER} />
         </div>
       )}
 
-      {source === 'memes' && status === 'error' && (
+      {status === 'error' && (
         <p role="alert" className="text-sm text-destructive">Couldn&apos;t load memes from imgflip.com. Try again later.</p>
       )}
 
-      {source === 'local' && notices.length > 0 && (
+      {notices.length > 0 && (
         <div role="alert" data-testid="mosaic-notices" className="relative rounded-md border border-destructive/50 p-3 pr-10 text-sm text-destructive dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
           <ul className="list-disc pl-5">
             {notices.map((n, i) => <li key={i}>{n}</li>)}
@@ -379,9 +423,10 @@ const Mosaic = () => {
         </div>
       )}
 
-      {images.length > 0 && (
+      {images.length > 0 && !expanded && (
         <p className="text-sm text-muted-foreground" data-testid="mosaic-stats">
-          {source === 'local' && `${localImages.length}/${LOCAL_LIMITS.maxFiles} files · `}
+          {localImages.length > 0 && `${localImages.length}/${LOCAL_LIMITS.maxFiles} files · `}
+          {memes.length > 0 && `${memes.length} ${memes.length === 1 ? 'meme' : 'memes'} · `}
           {layout.rows} {layout.rows === 1 ? 'row' : 'rows'} · empty space {(layout.empty * 100).toFixed(1)}% ({bandLabel})
         </p>
       )}
@@ -395,11 +440,18 @@ const Mosaic = () => {
           {...dropHandlers}
         >
           {images.length === 0 && (
-            <p className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-muted-foreground">
-              {source === 'memes'
-                ? 'Press “Load random memes” to fill the mosaic.'
-                : 'Drop images or videos here, or press “Add files”. They stay on your device.'}
-            </p>
+            // The empty frame opens the file picker too (only while empty: then a click on a
+            // video toggles its sound, and a meme opens imgflip.com).
+            <button
+              type="button"
+              onClick={pickFiles}
+              disabled={importing || status === 'loading'}
+              className="absolute inset-0 flex cursor-pointer items-center justify-center p-4 text-center text-sm text-muted-foreground hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default"
+            >
+              {status === 'loading' ? 'Loading memes…'
+                : importing ? 'Adding…'
+                  : 'Drop images or videos here, or press “Add files”. They stay on your device.'}
+            </button>
           )}
           {layout.tiles.map((t) => {
             const img = images.find((m) => m.id === t.id);

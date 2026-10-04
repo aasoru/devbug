@@ -197,13 +197,18 @@ test.describe('Mosaic', () => {
   };
 
   const tiles = (page) => page.getByTestId('mosaic-frame').locator('a');
+  // Memes are in the menu of the arrow next to "Add files".
+  const loadMemes = async (page, name = 'Load random memes') => {
+    await page.getByRole('button', { name: 'More ways to add' }).click();
+    await page.getByRole('menuitem', { name }).click();
+  };
 
   test('loads nothing until the button is pressed', async ({ page }) => {
     await mockImgflip(page);
     let apiCalls = 0;
     page.on('request', (req) => { if (req.url().includes('imgflip.com')) apiCalls++; });
     await page.goto('/mosaic');
-    await expect(page.getByText('Press “Load random memes” to fill the mosaic.')).toBeVisible();
+    await expect(page.getByText('Drop images or videos here, or press “Add files”. They stay on your device.')).toBeVisible();
     await expect(tiles(page)).toHaveCount(0);
     expect(apiCalls).toBe(0);
   });
@@ -211,7 +216,7 @@ test.describe('Mosaic', () => {
   test('fills the frame without overlaps, only with reviewed memes', async ({ page }) => {
     await mockImgflip(page);
     await page.goto('/mosaic');
-    await page.getByRole('button', { name: 'Load random memes' }).click();
+    await loadMemes(page);
     await expect(tiles(page)).toHaveCount(12);
 
     const frame = await page.getByTestId('mosaic-frame').boundingBox();
@@ -251,7 +256,7 @@ test.describe('Mosaic', () => {
     await mockImgflip(page);
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto('/mosaic');
-    await page.getByRole('button', { name: 'Load random memes' }).click();
+    await loadMemes(page);
     await expect(tiles(page)).toHaveCount(12);
     const before = await page.getByTestId('mosaic-frame').boundingBox();
 
@@ -279,7 +284,7 @@ test.describe('Mosaic', () => {
     await page.goto('/mosaic');
     // A tall frame: on a portrait phone a 16:9 frame is limited by the width, so it can't grow.
     await page.getByLabel('Frame').selectOption('9:16');
-    await page.getByRole('button', { name: 'Load random memes' }).click();
+    await loadMemes(page);
     await expect(tiles(page)).toHaveCount(12);
     const before = await page.getByTestId('mosaic-frame').boundingBox();
 
@@ -296,24 +301,81 @@ test.describe('Mosaic', () => {
     expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('');
   });
 
+  test('memes and my files share the mosaic; Clear removes both', async ({ page }) => {
+    await mockImgflip(page);
+    await page.goto('/mosaic');
+    await page.getByTestId('mosaic-file-input').setInputFiles([{ name: 'mine.png', mimeType: 'image/png', buffer: makePng(400, 300) }]);
+    await expect(page.getByRole('img', { name: 'mine.png' })).toBeVisible();
+
+    await loadMemes(page);
+    await expect(tiles(page)).toHaveCount(12); // memes come in next to my file
+    await expect(page.getByRole('img', { name: 'mine.png' })).toBeVisible();
+    await expect(page.getByTestId('mosaic-stats')).toContainText('1/20 files · 12 memes');
+
+    await loadMemes(page, 'Load other memes'); // other memes, my file stays
+    await expect(tiles(page)).toHaveCount(12);
+    await expect(page.getByRole('img', { name: 'mine.png' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.getByTestId('mosaic-frame').locator('img')).toHaveCount(0);
+  });
+
+  test('the arrow menu works with the keyboard and closes with Esc or a click outside', async ({ page }) => {
+    await page.goto('/mosaic');
+    const arrow = page.getByRole('button', { name: 'More ways to add' });
+    await expect(arrow).toHaveAttribute('aria-expanded', 'false');
+
+    await arrow.click();
+    await expect(arrow).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('menuitem', { name: 'Load random memes' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toBeHidden();
+    await expect(arrow).toBeFocused();
+
+    await arrow.click();
+    await page.getByRole('heading').first().click();
+    await expect(page.getByRole('menu')).toBeHidden();
+  });
+
+  test('on a phone, full screen with the "Screen" frame fills the whole height', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Document.prototype, 'fullscreenEnabled', { get: () => false });
+    });
+    await mockImgflip(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/mosaic');
+    await expect(page.getByLabel('Frame')).toHaveValue('screen'); // the default
+    await loadMemes(page);
+    await page.getByRole('button', { name: 'Full screen' }).click();
+
+    // The toolbar shrinks to one row of icons, and the frame takes everything below it.
+    const bar = await page.getByRole('button', { name: 'Exit full screen' }).boundingBox();
+    const frame = await page.getByTestId('mosaic-frame').boundingBox();
+    expect(bar.y).toBeLessThan(20);
+    expect(frame.y).toBeLessThan(bar.y + bar.height + 20);
+    expect(frame.y + frame.height).toBeGreaterThan(844 - 20);
+    expect(frame.width).toBeGreaterThan(390 - 20);
+    await expect(page.getByTestId('mosaic-stats')).toBeHidden();
+  });
+
   test('options re-layout the mosaic', async ({ page }) => {
     await mockImgflip(page);
     await page.goto('/mosaic');
-    await page.getByRole('button', { name: 'Load random memes' }).click();
+    await loadMemes(page);
     await expect(tiles(page)).toHaveCount(12);
 
-    await page.getByLabel('Images', { exact: true }).fill('6');
-    await page.getByLabel('Images', { exact: true }).press('Enter');
+    await page.getByLabel('Memes', { exact: true }).fill('6');
+    await page.getByLabel('Memes', { exact: true }).press('Enter');
     await expect(tiles(page)).toHaveCount(6);
 
     // Out-of-range values are clamped: 0 → 1.
-    await page.getByLabel('Images', { exact: true }).fill('0');
-    await page.getByLabel('Images', { exact: true }).press('Enter');
-    await expect(page.getByLabel('Images', { exact: true })).toHaveValue('1');
+    await page.getByLabel('Memes', { exact: true }).fill('0');
+    await page.getByLabel('Memes', { exact: true }).press('Enter');
+    await expect(page.getByLabel('Memes', { exact: true })).toHaveValue('1');
     await expect(tiles(page)).toHaveCount(1);
 
     // Typing pauses are enough — no Enter needed.
-    await page.getByLabel('Images', { exact: true }).fill('6');
+    await page.getByLabel('Memes', { exact: true }).fill('6');
     await expect(tiles(page)).toHaveCount(6);
 
     const lastBottom = async () => {
@@ -332,17 +394,13 @@ test.describe('Mosaic', () => {
 test.describe('Mosaic — my images', () => {
   const png = (name, w, h, color) => ({ name, mimeType: 'image/png', buffer: makePng(w, h, color) });
   const tiles = (page) => page.getByTestId('mosaic-frame').locator('img');
-  const useLocal = async (page) => {
-    await page.goto('/mosaic');
-    await page.getByLabel('Source').selectOption('local');
-  };
+  const useLocal = (page) => page.goto('/mosaic');
 
   test('adds images locally, without any network request', async ({ page, baseURL }) => {
     const external = [];
     page.on('request', (r) => { const u = new URL(r.url()); if (!['data:', 'blob:'].includes(u.protocol) && u.origin !== new URL(baseURL).origin) external.push(r.url()); });
     await useLocal(page);
     await expect(page.getByText('Drop images or videos here, or press “Add files”. They stay on your device.')).toBeVisible();
-    await expect(page.getByLabel('Images', { exact: true })).toBeHidden(); // the meme count doesn't apply here
 
     await page.getByTestId('mosaic-file-input').setInputFiles([
       png('wide.png', 400, 300, [200, 60, 60]), png('tall.png', 300, 600, [60, 200, 60]), png('square.png', 500, 500, [60, 60, 200]),
@@ -388,7 +446,7 @@ test.describe('Mosaic — my images', () => {
     await expect(page.getByRole('button', { name: 'Add files' })).toBeDisabled();
   });
 
-  test('removes one image, clears all, and keeps memes and my images apart', async ({ page }) => {
+  test('removes one image and clears all', async ({ page }) => {
     await useLocal(page);
     await page.getByTestId('mosaic-file-input').setInputFiles([png('a.png', 400, 300), png('b.png', 300, 400)]);
     await expect(tiles(page)).toHaveCount(2);
@@ -398,13 +456,18 @@ test.describe('Mosaic — my images', () => {
     await expect(tiles(page)).toHaveCount(1);
     await expect(page.getByRole('img', { name: 'b.png' })).toBeVisible();
 
-    await page.getByLabel('Source').selectOption('memes');
-    await expect(tiles(page)).toHaveCount(0);
-    await page.getByLabel('Source').selectOption('local');
-    await expect(tiles(page)).toHaveCount(1); // still there after switching back
-
     await page.getByRole('button', { name: 'Clear' }).click();
     await expect(tiles(page)).toHaveCount(0);
+  });
+
+  test('the empty mosaic opens the file picker when clicked', async ({ page }) => {
+    await useLocal(page);
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: /^Drop images or videos here/ }).click();
+    await (await chooser).setFiles([png('picked.png', 400, 300)]);
+    await expect(page.getByRole('img', { name: 'picked.png' })).toBeVisible();
+    // Once there's something in it, the frame is no longer a button.
+    await expect(page.getByRole('button', { name: /^Drop images or videos here/ })).toHaveCount(0);
   });
 
   test('accepts images dropped on the mosaic', async ({ page }) => {
@@ -447,7 +510,6 @@ test.describe('Mosaic — my files: videos', () => {
 
   test('plays videos muted and looped next to images, and pauses/plays them all', async ({ page }) => {
     await page.goto('/mosaic');
-    await page.getByLabel('Source').selectOption('local');
     const clip = await recordWebm(page, 320, 180, 'clip.webm');
     await page.getByTestId('mosaic-file-input').setInputFiles([clip, { name: 'photo.png', mimeType: 'image/png', buffer: makePng(300, 400) }]);
 
@@ -468,7 +530,6 @@ test.describe('Mosaic — my files: videos', () => {
 
   test('only one video has sound at a time: click to hear it, the rest are muted', async ({ page }) => {
     await page.goto('/mosaic');
-    await page.getByLabel('Source').selectOption('local');
     const clips = [await recordWebm(page, 320, 180, 'one.webm'), await recordWebm(page, 180, 320, 'two.webm'), await recordWebm(page, 240, 240, 'three.webm')];
     await page.getByTestId('mosaic-file-input').setInputFiles(clips);
     await expect(videos(page)).toHaveCount(3);
@@ -494,7 +555,6 @@ test.describe('Mosaic — my files: videos', () => {
 
   test('allows at most 6 videos and rejects unplayable ones', async ({ page }) => {
     await page.goto('/mosaic');
-    await page.getByLabel('Source').selectOption('local');
     const clips = [];
     for (let i = 0; i < 7; i++) clips.push(await recordWebm(page, 160 + i * 20, 120, `clip-${i}.webm`));
     // The broken one comes first: it must not use up one of the 6 video slots.
