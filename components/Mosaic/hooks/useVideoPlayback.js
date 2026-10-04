@@ -5,15 +5,25 @@ import { useEffect, useRef, useState } from 'react';
 const DOUBLE_TAP_MS = 300;
 
 const videosIn = (ref) => ref.current?.querySelectorAll('video') ?? [];
+const videoById = (ref, id) => [...videosIn(ref)].find((v) => v.dataset.id === id);
+
+// Opens the system's full screen player for a video: the Fullscreen API, or on iPhone Safari
+// (which only allows full screen for videos) its own player. onFail: it couldn't open.
+const openPlayer = (video, onFail) => {
+  if (video.requestFullscreen) video.requestFullscreen().catch(onFail);
+  else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+  else onFail();
+};
 
 // Videos inside `ref`'s element: all play (muted, looped) or all pause, and at most one has
-// sound. One video can be shown big (focused), with its controls. `layout` is whatever changes
-// when videos appear or move, so new ones follow too.
+// sound. A double tap opens one in the system's full screen player. `layout` is whatever
+// changes when videos appear or move, so new ones follow too.
 export function useVideoPlayback(ref, layout) {
   const [playing, setPlaying] = useState(true);
   const [audioId, setAudioId] = useState(null); // the one video with sound, if any
-  const [focusedId, setFocusedId] = useState(null); // the video shown big, if any
-  const lastTap = useRef({ id: null, time: 0 });
+  // The video in the full screen player, if any, and whether it had sound before (kept on leaving).
+  const [player, setPlayer] = useState(null); // { id, keepSound }
+  const lastTap = useRef({ id: null, time: 0, hadSound: false });
 
   useEffect(() => {
     videosIn(ref).forEach((v) => {
@@ -29,44 +39,55 @@ export function useVideoPlayback(ref, layout) {
     videosIn(ref).forEach((v) => { v.muted = v.dataset.id !== id; });
   };
 
+  // Leaving the player (back, its close button, Esc) returns to the mosaic keeping the video's
+  // sound only if it had it before the double tap and still has it (it may have been muted with
+  // the player's controls); otherwise it's muted.
+  useEffect(() => {
+    const video = player && videoById(ref, player.id);
+    if (!video) return;
+    const close = () => {
+      setPlayer(null);
+      if (player.keepSound && !video.muted) return; // it's already the one unmuted video
+      setAudioId(null);
+      video.muted = true;
+    };
+    const onFullscreenChange = () => { if (document.fullscreenElement !== video) close(); };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    video.addEventListener('webkitendfullscreen', close); // iPhone Safari's player
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      video.removeEventListener('webkitendfullscreen', close);
+    };
+  }, [ref, player]);
+
   const toggleAudio = (id) => setSound(audioId === id ? null : id);
 
-  const focus = (id) => {
-    setFocusedId(id);
-    setSound(id);
-  };
-
-  const unfocus = () => {
-    setFocusedId(null);
-    setSound(null);
-  };
-
   // One tap toggles the video's sound (and mutes the rest). A second tap on the same video
-  // within DOUBLE_TAP_MS shows it big with sound — undoing the first tap, so at most there's a
-  // blip of sound in between, and single taps never wait.
+  // within DOUBLE_TAP_MS opens it in the full screen player with sound — undoing the first tap,
+  // so at most there's a blip of sound in between, and single taps never wait.
   const tap = (id) => {
     const now = performance.now();
-    const double = lastTap.current.id === id && now - lastTap.current.time < DOUBLE_TAP_MS;
-    lastTap.current = double ? { id: null, time: 0 } : { id, time: now };
-    if (double) focus(id);
-    else toggleAudio(id);
+    const { id: lastId, time, hadSound } = lastTap.current;
+    const double = lastId === id && now - time < DOUBLE_TAP_MS;
+    lastTap.current = double ? { id: null, time: 0, hadSound: false } : { id, time: now, hadSound: audioId === id };
+    if (!double) {
+      toggleAudio(id);
+      return;
+    }
+    setSound(id);
+    setPlayer({ id, keepSound: hadSound });
+    const video = videoById(ref, id);
+    if (video) openPlayer(video, () => setPlayer(null));
   };
 
   return {
     playing,
     audioId,
-    focusedId,
+    playerId: player?.id ?? null,
     togglePlaying: () => setPlaying((p) => !p),
     toggleAudio,
     tap,
-    unfocus,
-    forget: (id) => { // the video is gone
-      if (audioId === id) setAudioId(null);
-      if (focusedId === id) setFocusedId(null);
-    },
-    reset: () => {
-      setAudioId(null);
-      setFocusedId(null);
-    },
+    forget: (id) => { if (audioId === id) setAudioId(null); }, // the video is gone
+    reset: () => setAudioId(null),
   };
 }

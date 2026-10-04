@@ -652,34 +652,50 @@ test.describe('Mosaic — my files: videos', () => {
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': false });
   });
 
-  test('a double tap shows the video big, with sound and its controls; back returns to the mosaic', async ({ page }) => {
+  test('a double tap opens the video full screen with sound and controls; leaving mutes it', async ({ page }) => {
     await page.goto('/mosaic');
     const clips = [await recordWebm(page, 320, 180, 'one.webm'), await recordWebm(page, 180, 320, 'two.webm')];
     await page.getByTestId('mosaic-file-input').setInputFiles(clips);
     await expect(videos(page)).toHaveCount(2);
     const one = page.locator('video[aria-label="one.webm"]');
-    const tile = one.locator('..');
-    const before = await tile.boundingBox();
+    const state = () => one.evaluate((v) => ({ fullscreen: document.fullscreenElement === v, muted: v.muted, controls: v.controls }));
 
     await one.dblclick();
-    const frame = await page.getByTestId('mosaic-frame').boundingBox();
-    await expect.poll(async () => { const b = await tile.boundingBox(); return [Math.round(b.width), Math.round(b.height)]; })
-      .toEqual([Math.round(frame.width) - 2, Math.round(frame.height) - 2]); // fills the frame (inside its 1px border)
-    await expect.poll(() => one.evaluate((v) => ({ muted: v.muted, controls: v.controls }))).toEqual({ muted: false, controls: true });
-    await expect(page.getByRole('button', { name: 'Remove one.webm' })).toHaveCount(0); // no tile buttons while big
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
 
-    const back = page.getByRole('button', { name: 'Back to the mosaic from one.webm' });
-    await back.click();
-    await expect(back).toHaveCount(0);
-    await expect.poll(() => one.evaluate((v) => ({ muted: v.muted, controls: v.controls }))).toEqual({ muted: true, controls: false });
-    await expect.poll(async () => Math.round((await tile.boundingBox()).width)).toBe(Math.round(before.width));
+    await page.evaluate(() => document.exitFullscreen()); // what back / Esc / the player's button do
+    await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
 
-    // Esc goes back too.
+    // A video that already had sound keeps it on leaving the player; the rest stay muted.
+    await one.click();
+    await expect.poll(() => one.evaluate((v) => v.muted)).toBe(false);
+    await page.waitForTimeout(400); // so the double tap below isn't joined to this tap
     await one.dblclick();
-    await expect(page.getByRole('button', { name: 'Back to the mosaic from one.webm' })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('button', { name: 'Back to the mosaic from one.webm' })).toHaveCount(0);
-    await expect.poll(() => one.evaluate((v) => v.muted)).toBe(true);
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(state).toEqual({ fullscreen: false, muted: false, controls: false });
+    await expect(page.getByRole('button', { name: 'Sound for one.webm' })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => page.locator('video[aria-label="two.webm"]').evaluate((v) => v.muted)).toBe(true);
+
+    // Muted with the player's controls: it leaves muted, even though it had sound before.
+    await page.waitForTimeout(400);
+    await one.dblclick();
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+    await one.evaluate((v) => { v.muted = true; }); // the player's mute button
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
+    await expect(page.getByRole('button', { name: 'Sound for one.webm' })).toHaveAttribute('aria-pressed', 'false');
+    await page.waitForTimeout(400);
+
+    // From a full screen mosaic: leaving the video returns to the mosaic, still full screen.
+    await page.getByRole('button', { name: 'Full screen' }).click();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.dataset.testid)).toBe('mosaic-root');
+    await one.dblclick();
+    await expect.poll(state).toEqual({ fullscreen: true, muted: false, controls: true });
+    await expect(page.getByRole('button', { name: 'Show controls' })).toBeAttached(); // the mosaic stays in full screen layout behind
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.dataset.testid)).toBe('mosaic-root');
+    await expect.poll(state).toEqual({ fullscreen: false, muted: true, controls: false });
   });
 
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {

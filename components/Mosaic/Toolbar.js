@@ -8,7 +8,7 @@ const PrivacyNote = () => (
   <p className="text-xs text-muted-foreground">
     Your files stay on this device — nothing is uploaded. Up to {LOCAL_LIMITS.maxFiles} files:{' '}
     images up to {formatSize(LOCAL_LIMITS.maxBytes, 0)} and {LOCAL_LIMITS.maxPixels / 1e6} MP (scaled down to {LOCAL_LIMITS.maxSide} px),{' '}
-    and {LOCAL_LIMITS.maxVideos} videos up to {formatSize(LOCAL_LIMITS.maxVideoBytes, 0)} and 4K. Videos play muted: tap one to hear it (one at a time), double-tap it to see it big with its controls.{' '}
+    and {LOCAL_LIMITS.maxVideos} videos up to {formatSize(LOCAL_LIMITS.maxVideoBytes, 0)} and 4K. Videos play muted: tap one to hear it (one at a time), double-tap it to watch it full screen.{' '}
     Memes load from{' '}
     <a href="https://imgflip.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">imgflip.com</a>{' '}
     only when you pick “Load random memes” from the arrow next to “Add files”.
