@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 
+import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { layoutMosaic } from './layout';
 import { DEFAULT_OPTIONS } from './options';
 import { useFrameSize } from './hooks/useFrameSize';
@@ -15,9 +16,10 @@ import { OptionsPanel } from './OptionsPanel';
 import { Stats } from './Stats';
 import { Toolbar } from './Toolbar';
 
+// In full screen the mosaic goes edge to edge; the controls wait in a bottom sheet.
 const ROOT = {
-  overlay: 'fixed inset-0 z-50 flex h-dvh flex-col gap-2 overflow-auto bg-background p-2 text-foreground',
-  fullscreen: 'flex h-full flex-col gap-2 overflow-auto bg-background p-2 text-foreground',
+  overlay: 'fixed inset-0 z-50 h-dvh overflow-hidden bg-background text-foreground',
+  fullscreen: 'relative h-full overflow-hidden bg-background text-foreground',
   page: 'flex flex-col gap-4',
 };
 
@@ -26,6 +28,7 @@ const ROOT = {
 const Mosaic = () => {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [showOptions, setShowOptions] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(false); // the bottom sheet, in full screen
   const rootRef = useRef(null);
   const containerRef = useRef(null);
   const frameRef = useRef(null);
@@ -33,8 +36,8 @@ const Mosaic = () => {
 
   const memes = useMemes();
   const files = useLocalFiles();
-  // Entering full screen hides the options so the mosaic gets the whole screen.
-  const screen = useFullscreen(rootRef, () => setShowOptions(false));
+  // Full screen starts with the controls tucked away, so the mosaic gets the whole screen.
+  const screen = useFullscreen(rootRef, () => setControlsOpen(false));
   const size = useFrameSize(containerRef, screen.expanded, options.frame);
 
   const items = useMemo(() => [...files.items, ...memes.items], [files.items, memes.items]);
@@ -63,10 +66,10 @@ const Mosaic = () => {
 
   const busyMessage = memes.status === 'loading' ? 'Loading memes…' : files.importing ? 'Adding…' : null;
 
-  return (
-    <div ref={rootRef} data-testid="mosaic-root" className={screen.overlay ? ROOT.overlay : screen.fullscreen ? ROOT.fullscreen : ROOT.page}>
+  const controls = (
+    <div className="flex flex-col gap-4">
       <Toolbar
-        compact={screen.expanded}
+        expanded={screen.expanded}
         add={{
           adding: files.importing,
           addDisabled: files.importing || files.full,
@@ -80,6 +83,18 @@ const Mosaic = () => {
         onToggleOptions={() => setShowOptions((v) => !v)}
         onToggleFullscreen={screen.toggle}
       />
+      {(showOptions || screen.expanded) && <OptionsPanel options={options} onChange={setOption} />}
+      {memes.status === 'error' && (
+        <p role="alert" className="text-sm text-destructive">Couldn&apos;t load memes from imgflip.com. Try again later.</p>
+      )}
+      <Notices notices={files.notices} onDismiss={files.dismissNotices} />
+    </div>
+  );
+
+  return (
+    <div ref={rootRef} data-testid="mosaic-root" className={screen.overlay ? ROOT.overlay : screen.fullscreen ? ROOT.fullscreen : ROOT.page}>
+      {!screen.expanded && controls}
+      {items.length > 0 && !screen.expanded && <Stats files={files.items.length} memes={memes.items.length} layout={layout} />}
       <input
         ref={fileInput}
         type="file"
@@ -90,17 +105,10 @@ const Mosaic = () => {
         onChange={(e) => { files.add(e.target.files); e.target.value = ''; }}
       />
 
-      {showOptions && <OptionsPanel options={options} onChange={setOption} />}
-
-      {memes.status === 'error' && (
-        <p role="alert" className="text-sm text-destructive">Couldn&apos;t load memes from imgflip.com. Try again later.</p>
-      )}
-      <Notices notices={files.notices} onDismiss={files.dismissNotices} />
-      {items.length > 0 && !screen.expanded && <Stats files={files.items.length} memes={memes.items.length} layout={layout} />}
-
-      <div ref={containerRef} className={screen.expanded ? 'min-h-0 w-full flex-1' : 'w-full'}>
+      <div ref={containerRef} className={screen.expanded ? 'flex h-full w-full items-center' : 'w-full'}>
         <MosaicFrame
           ref={frameRef}
+          bare={screen.expanded}
           size={size}
           items={items}
           layout={layout}
@@ -111,6 +119,12 @@ const Mosaic = () => {
           onRemove={remove}
         />
       </div>
+
+      {screen.expanded && (
+        <BottomSheet open={controlsOpen} onOpenChange={setControlsOpen} label="Mosaic controls" handleLabel="Show controls">
+          {controls}
+        </BottomSheet>
+      )}
     </div>
   );
 };

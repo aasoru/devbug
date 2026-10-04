@@ -7,8 +7,8 @@ import { Tile } from './Tile';
 
 // The frame with the placed items. Files can be dropped on it; while empty, it's also a button
 // that opens the file picker (only while empty: then a click on a video toggles its sound, and
-// a meme opens imgflip.com).
-export function MosaicFrame({ ref, size, items, layout, playback, busyMessage, onPickFiles, onDropFiles, onRemove }) {
+// a meme opens imgflip.com). `bare` (full screen): no border or rounded corners, edge to edge.
+export function MosaicFrame({ ref, bare, size, items, layout, playback, busyMessage, onPickFiles, onDropFiles, onRemove }) {
   const [dragging, setDragging] = useState(false);
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
@@ -22,7 +22,7 @@ export function MosaicFrame({ ref, size, items, layout, playback, busyMessage, o
     <div
       ref={ref}
       data-testid="mosaic-frame"
-      className={twMerge('relative mx-auto overflow-hidden rounded-md border bg-muted/40', dragging && 'ring-2 ring-ring')}
+      className={twMerge('relative mx-auto overflow-hidden', bare ? 'bg-background' : 'rounded-md border bg-muted/40', dragging && 'ring-2 ring-ring ring-inset')}
       style={{ width: size.width, height: size.height }}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}

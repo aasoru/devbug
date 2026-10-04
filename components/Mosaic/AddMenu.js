@@ -51,7 +51,7 @@ function MemesForm({ ref, count, loaded, loading, onLoad }) {
 // Split button: "Add files", plus an arrow that opens the other source (memes) with how many
 // to load. Built by hand (no Radix): the number field gets focus (selected, ready to type);
 // Esc or a click outside closes it, and Esc gives focus back to the arrow.
-export function AddMenu({ compact, adding, addDisabled, onAddFiles, memes }) {
+export function AddMenu({ adding, addDisabled, onAddFiles, memes }) {
   const [open, setOpen] = useState(false);
   const root = useRef(null);
   const arrow = useRef(null);
@@ -76,7 +76,6 @@ export function AddMenu({ compact, adding, addDisabled, onAddFiles, memes }) {
       <ToolbarButton
         icon={ImagePlus}
         label={adding ? 'Adding…' : 'Add files'}
-        compact={compact}
         variant="default"
         onClick={onAddFiles}
         disabled={addDisabled}

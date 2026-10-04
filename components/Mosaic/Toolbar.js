@@ -1,6 +1,4 @@
 import { Maximize, Minimize, Pause, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { twMerge } from 'tailwind-merge';
-
 import { LOCAL_LIMITS } from './limits';
 import { AddMenu } from './AddMenu';
 import { ToolbarButton } from './ToolbarButton';
@@ -19,35 +17,35 @@ const PrivacyNote = () => (
   </p>
 );
 
-// Actions above the mosaic. `compact` (full screen) shrinks it to one row of icons.
-export function Toolbar({ compact, add, playback, hasItems, onClear, optionsShown, onToggleOptions, onToggleFullscreen }) {
+// Actions for the mosaic. In full screen they live in the bottom sheet (`expanded`), where the
+// options are always shown, so there's no options toggle and no privacy note.
+export function Toolbar({ expanded, add, playback, hasItems, onClear, optionsShown, onToggleOptions, onToggleFullscreen }) {
   return (
-    <div className={twMerge('flex flex-wrap items-center', compact ? 'gap-2' : 'gap-3')}>
-      <AddMenu compact={compact} {...add} />
+    <div className="flex flex-wrap items-center gap-3">
+      <AddMenu {...add} />
       {playback.hasVideos && (
         <ToolbarButton
           icon={playback.playing ? Pause : Play}
           label={playback.playing ? 'Pause all' : 'Play all'}
-          compact={compact}
           onClick={playback.togglePlaying}
         />
       )}
-      {hasItems && <ToolbarButton icon={Trash2} label="Clear" compact={compact} onClick={onClear} />}
+      {hasItems && <ToolbarButton icon={Trash2} label="Clear" onClick={onClear} />}
+      {!expanded && (
+        <ToolbarButton
+          icon={SlidersHorizontal}
+          label={optionsShown ? 'Hide options' : 'Show options'}
+          onClick={onToggleOptions}
+          aria-expanded={optionsShown}
+          aria-controls="mosaic-options"
+        />
+      )}
       <ToolbarButton
-        icon={SlidersHorizontal}
-        label={optionsShown ? 'Hide options' : 'Show options'}
-        compact={compact}
-        onClick={onToggleOptions}
-        aria-expanded={optionsShown}
-        aria-controls="mosaic-options"
-      />
-      <ToolbarButton
-        icon={compact ? Minimize : Maximize}
-        label={compact ? 'Exit full screen' : 'Full screen'}
-        compact={compact}
+        icon={expanded ? Minimize : Maximize}
+        label={expanded ? 'Exit full screen' : 'Full screen'}
         onClick={onToggleFullscreen}
       />
-      {!compact && <PrivacyNote />}
+      {!expanded && <PrivacyNote />}
     </div>
   );
 }
