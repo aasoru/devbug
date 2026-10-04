@@ -1,10 +1,10 @@
 // Mosaic layout: fit images into a fixed frame, keeping every image whole (no cropping,
-// no distortion). Images go in justified rows (each row spans the full width); of all the
-// ways to split the images into rows (keeping their order), we pick the one that leaves
-// the least empty space — by default only among splits whose rows have similar heights
-// (tallest ≤ 2× shortest), so images don't end up tiny next to giant ones. What remains is
-// a single band — below the rows or beside them — spread as spacing, centred, or left at
-// the end (bottom or right, whichever side it falls on).
+// no distortion). Images go in justified rows (each row spans the full width) or justified
+// columns; of all the ways to split them, we pick the one that leaves the least empty space —
+// by default weighed against how uneven the rows get, so images don't end up tiny next to
+// giant ones. The order can be kept or rearranged to fit better. What remains is a single
+// band — below the rows or beside them — spread as spacing, centred, or left at the end
+// (bottom or right, whichever side it falls on).
 
 const MAX_EXACT = 18; // up to 2^17 partitions — instant; beyond that, a greedy fallback
 export const MAX_ROW_RATIO = 2; // "similar sizes": tallest row at most 2× the shortest
@@ -190,89 +190,4 @@ export function layoutMosaic(items, { width, height, gap = 0, leftover = 'center
   const placed = place(best.ordered, best.ratios, best.m, { ...best.frame, gap, leftover });
   if (best.f === 'rows') return { ...placed, flow: 'rows' };
   return { ...placed, tiles: placed.tiles.map(transposeTile), flow: 'columns', band: BAND_TRANSPOSED[placed.band] };
-}
-
-// Imgflip's get_memes returns popular blank templates, with no NSFW filter. Only templates
-// reviewed by hand (2026-09-30, twice — the second pass at full size caught text and
-// details the thumbnails hid) are shown; new ones are ignored until someone reviews them.
-export const SAFE_MEME_IDS = new Set([
-  '181913649', '87743020', '112126428', '217743513', '124822590', '322841258', '135256802',
-  '131940431', '131087935', '4087833', '97984', '309868304', '129242436', '91538330', '438680',
-  '188390779', '79132341', '101470', '161865971', '102156234', '61579', '180190441', '177682295',
-  '100777631', '427308417', '505705955', '247375501', '28251713', '67452763', '3218037', '93895088',
-  '178591752', '370867422', '77045868', '55311130', '533936279', '110163934', '148909805', '284929871', '137501417', '354700819', '195515965', '89370399', '206151308', '163573', '1035805',
-  '316466202', '27813981', '119215120', '84341851', '166969924', '133946291', '259237855',
-  '114585149', '187102311', '226297822', '234202281', '145139900', '129315248',
-  '101956210', '110133729', '162372564', '155067746', '142009471', '14371066', '61585',
-  '61520', '61556', '72525473', '309668311', '20007896', '29562797', '21735', '91998305',
-  '134797956', '92084495', '360597639', '5496396', '123999232', '47169131', '342785297',
-]);
-
-export const IMGFLIP_API = 'https://api.imgflip.com/get_memes';
-
-// Keeps only reviewed templates and picks `count` of them at random.
-export function pickSafeMemes(memes, count, random = Math.random) {
-  const safe = memes.filter((m) => SAFE_MEME_IDS.has(String(m.id)) && m.width > 0 && m.height > 0);
-  for (let i = safe.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [safe[i], safe[j]] = [safe[j], safe[i]];
-  }
-  return safe.slice(0, count).map(({ id, name, url, width, height }) => ({ id: String(id), name, url, width, height }));
-}
-
-// Local files: read in the browser (object URLs), never uploaded. Limits protect the device:
-// - images: a decoded image takes 4 bytes per pixel whatever its display size (a 48 MP photo is
-//   ~195 MB), so they are downscaled on import and only the copy is kept;
-// - videos: they can't be downscaled without re-encoding (a heavy dependency), and each playing
-//   video costs CPU/GPU, so only a few are allowed; they play muted and looped.
-export const LOCAL_LIMITS = {
-  maxFiles: 20, // images + videos
-  maxBytes: 30 * 1024 * 1024, // 30 MB per image
-  maxPixels: 50_000_000, // 50 MP before downscaling (fits 48 MP phone photos)
-  maxSide: 2048, // long side of the image copy that is kept
-  maxVideos: 6,
-  maxVideoBytes: 200 * 1024 * 1024, // 200 MB per video
-};
-
-export const fileKind = (type = '') => (type.startsWith('image/') ? 'image' : type.startsWith('video/') ? 'video' : null);
-
-const MB = 1024 * 1024;
-
-// Before decoding: is it an image or a video, and not too heavy? Returns an error message or null.
-export function checkFile({ name, type, size }, limits = LOCAL_LIMITS) {
-  const kind = fileKind(type);
-  if (!kind) return `${name}: not an image or a video`;
-  const max = kind === 'video' ? limits.maxVideoBytes : limits.maxBytes;
-  if (size > max) return `${name}: too large (${(size / MB).toFixed(1)} MB, max ${max / MB} MB)`;
-  return null;
-}
-
-// Limit check for the next file, given what has actually been added so far (files that fail to
-// load must not use up a slot). Returns 'files', 'videos' or null.
-export function overLimit(file, added, limits = LOCAL_LIMITS) {
-  if (added.length >= limits.maxFiles) return 'files';
-  if (fileKind(file.type) === 'video' && added.filter((f) => f.kind === 'video').length >= limits.maxVideos) return 'videos';
-  return null;
-}
-
-export function limitMessages({ files = 0, videos = 0 }, limits = LOCAL_LIMITS) {
-  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-  const messages = [];
-  if (videos) messages.push(`${plural(videos, 'video was', 'videos were')} not added: the limit is ${limits.maxVideos} videos`);
-  if (files) messages.push(`${plural(files, 'file was', 'files were')} not added: the limit is ${limits.maxFiles} files`);
-  return messages;
-}
-
-// After reading its size: not too many pixels to downscale safely? Returns an error message or null.
-export function checkPixels(name, width, height, limits = LOCAL_LIMITS) {
-  if (!(width > 0 && height > 0)) return `${name}: couldn't read the image size`;
-  const mp = (width * height) / 1e6;
-  if (width * height > limits.maxPixels) return `${name}: too large (${mp.toFixed(0)} MP, max ${limits.maxPixels / 1e6} MP)`;
-  return null;
-}
-
-// Size of the copy: same aspect ratio, long side at most maxSide; never upscales.
-export function fitWithin(width, height, maxSide = LOCAL_LIMITS.maxSide) {
-  const scale = Math.min(1, maxSide / Math.max(width, height));
-  return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }

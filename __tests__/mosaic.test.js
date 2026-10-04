@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { layoutMosaic, pickSafeMemes, SAFE_MEME_IDS, MAX_ROW_RATIO, SIZE_PENALTY, checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/lib';
+import { layoutMosaic, MAX_ROW_RATIO, SIZE_PENALTY } from '@/components/Mosaic/layout';
+import { pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
+import { checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/limits';
 
 const img = (id, width, height) => ({ id: String(id), width, height });
 const EPS = 1e-6;
