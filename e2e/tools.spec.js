@@ -735,6 +735,37 @@ test.describe('Mosaic — my files: videos', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore); // back where it was, not at the top
   });
 
+  test('a wide video turns the screen to landscape in its player; leaving or a full screen mosaic frees it', async ({ page }) => {
+    // Headless Chromium can't rotate: record what the page asks of the Screen Orientation API.
+    await page.addInitScript(() => {
+      window.orientationCalls = [];
+      screen.orientation.lock = (o) => { window.orientationCalls.push(`lock:${o}`); return Promise.resolve(); };
+      screen.orientation.unlock = () => { window.orientationCalls.push('unlock'); };
+    });
+    await page.goto('/mosaic');
+    await page.getByTestId('mosaic-file-input').setInputFiles([await recordWebm(page, 320, 180, 'wide.webm'), await recordWebm(page, 180, 320, 'tall.webm')]);
+    await expect(videos(page)).toHaveCount(2);
+    const calls = () => page.evaluate(() => [...window.orientationCalls]);
+    const clearCalls = () => page.evaluate(() => { window.orientationCalls.length = 0; });
+
+    await page.getByRole('button', { name: 'Full screen' }).click(); // the mosaic: free to rotate
+    await expect.poll(calls).toEqual(['unlock']);
+    await clearCalls();
+
+    await page.locator('video[aria-label="wide.webm"]').dblclick();
+    await expect.poll(calls).toEqual(['lock:landscape']);
+    await clearCalls();
+    await page.evaluate(() => document.exitFullscreen()); // back to the mosaic, free again
+    // Leaving the player frees the orientation (the full screen mosaic behind frees it too).
+    await expect.poll(async () => { const c = await calls(); return c.length > 0 && c.every((x) => x === 'unlock'); }).toBe(true);
+    await clearCalls();
+
+    await page.waitForTimeout(400);
+    await page.locator('video[aria-label="tall.webm"]').dblclick(); // a tall video doesn't force landscape
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label'))).toBe('tall.webm');
+    expect(await calls()).toEqual([]);
+  });
+
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {
     await page.goto('/mosaic');
     const clips = [];

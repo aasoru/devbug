@@ -2,6 +2,8 @@
 
 import { useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 
+import { unlockOrientation } from '../orientation';
+
 // The Fullscreen API isn't available everywhere (iPhone Safari only allows it for videos).
 // There, full screen falls back to an overlay covering the whole viewport instead.
 const noSubscribe = () => () => {};
@@ -24,7 +26,9 @@ export function useFullscreen(ref, onEnter) {
       if (element && element !== ref.current && ref.current?.contains(element)) return;
       const active = element === ref.current;
       setFullscreen(active);
-      if (active) entered();
+      if (!active) return;
+      unlockOrientation(); // let the phone rotate the full screen mosaic
+      entered();
     };
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
