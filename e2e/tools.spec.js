@@ -735,7 +735,7 @@ test.describe('Mosaic — my files: videos', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore); // back where it was, not at the top
   });
 
-  test('a wide video turns the screen to landscape in its player; leaving or a full screen mosaic frees it', async ({ page }) => {
+  test('the page never forces the orientation; a full screen mosaic and leaving a player free it', async ({ page }) => {
     // Headless Chromium can't rotate: record what the page asks of the Screen Orientation API.
     await page.addInitScript(() => {
       window.orientationCalls = [];
@@ -743,27 +743,46 @@ test.describe('Mosaic — my files: videos', () => {
       screen.orientation.unlock = () => { window.orientationCalls.push('unlock'); };
     });
     await page.goto('/mosaic');
-    await page.getByTestId('mosaic-file-input').setInputFiles([await recordWebm(page, 320, 180, 'wide.webm'), await recordWebm(page, 180, 320, 'tall.webm')]);
-    await expect(videos(page)).toHaveCount(2);
+    await page.getByTestId('mosaic-file-input').setInputFiles([await recordWebm(page, 320, 180, 'wide.webm')]);
+    await expect(videos(page)).toHaveCount(1);
     const calls = () => page.evaluate(() => [...window.orientationCalls]);
-    const clearCalls = () => page.evaluate(() => { window.orientationCalls.length = 0; });
 
-    await page.getByRole('button', { name: 'Full screen' }).click(); // the mosaic: free to rotate
+    await page.getByRole('button', { name: 'Full screen' }).click();
     await expect.poll(calls).toEqual(['unlock']);
-    await clearCalls();
-
     await page.locator('video[aria-label="wide.webm"]').dblclick();
-    await expect.poll(calls).toEqual(['lock:landscape']);
-    await clearCalls();
-    await page.evaluate(() => document.exitFullscreen()); // back to the mosaic, free again
-    // Leaving the player frees the orientation (the full screen mosaic behind frees it too).
-    await expect.poll(async () => { const c = await calls(); return c.length > 0 && c.every((x) => x === 'unlock'); }).toBe(true);
-    await clearCalls();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label'))).toBe('wide.webm');
+    await page.evaluate(() => document.exitFullscreen());
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.dataset.testid)).toBe('mosaic-root');
+    expect((await calls()).filter((c) => c.startsWith('lock'))).toEqual([]); // the browser decides how to turn a video
+  });
 
-    await page.waitForTimeout(400);
-    await page.locator('video[aria-label="tall.webm"]').dblclick(); // a tall video doesn't force landscape
-    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label'))).toBe('tall.webm');
-    expect(await calls()).toEqual([]);
+  test('the video player survives the mosaic relayouting behind it (e.g. the screen turning)', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/mosaic');
+    const clips = [];
+    for (const [w, h, name] of [[320, 180, 'a.webm'], [180, 320, 'b.webm'], [240, 240, 'c.webm'], [320, 120, 'd.webm'], [140, 320, 'e.webm']]) clips.push(await recordWebm(page, w, h, name));
+    await page.getByTestId('mosaic-file-input').setInputFiles(clips);
+    await expect(videos(page)).toHaveCount(5);
+    const order = () => videos(page).evaluateAll((els) => els.map((v) => v.getAttribute('aria-label')).join());
+    const inPlayer = () => page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label') ?? null);
+    // A full screen window can't be resized here, so squeeze the mosaic's container instead:
+    // same effect as turning the screen — a new size, a new layout, maybe a new order.
+    const squeeze = (width) => page.getByTestId('mosaic-frame').evaluate((frame, w) => { frame.parentElement.style.width = w; }, width);
+
+    for (const name of ['a.webm', 'd.webm', 'e.webm']) {
+      await page.waitForTimeout(400);
+      await page.locator(`video[aria-label="${name}"]`).dblclick();
+      await expect.poll(inPlayer).toBe(name);
+      const before = await order();
+      for (const width of ['120px', '260px', '']) {
+        await squeeze(width);
+        await page.waitForTimeout(400);
+        expect(await inPlayer()).toBe(name); // still open
+      }
+      expect(await order()).toBe(before); // the elements never move in the page
+      await page.evaluate(() => document.exitFullscreen());
+      await expect.poll(inPlayer).toBe(null);
+    }
   });
 
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {
