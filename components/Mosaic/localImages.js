@@ -1,4 +1,4 @@
-import { checkFile, checkPixels, fileKind, fitWithin, LOCAL_LIMITS } from './lib';
+import { checkFile, checkPixels, fileKind, fitWithin, LOCAL_LIMITS } from './limits';
 
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image();
