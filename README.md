@@ -1,6 +1,6 @@
 # devbug
 
-A developer Swiss army knife — a collection of small, self-contained tools useful for day-to-day dev work. Minimal external dependencies; each tool works without a backend.
+A developer Swiss army knife — a collection of small, self-contained tools for dev work and everyday tasks. Minimal external dependencies; each tool works without a backend.
 
 ## Tools
 
