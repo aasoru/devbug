@@ -358,6 +358,21 @@ test.describe('Mosaic', () => {
     await expect(page.getByTestId('mosaic-stats')).toBeHidden();
   });
 
+  test('"Reorder to fit" is on by default and can be turned off', async ({ page }) => {
+    await mockImgflip(page);
+    await page.goto('/mosaic');
+    const toggle = page.getByRole('switch', { name: 'Reorder to fit' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await loadMemes(page);
+    await expect(tiles(page)).toHaveCount(12);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect(tiles(page)).toHaveCount(12); // re-laid out, nothing lost
+    await page.getByText('Reorder to fit').click(); // the label toggles it too
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  });
+
   test('options re-layout the mosaic', async ({ page }) => {
     await mockImgflip(page);
     await page.goto('/mosaic');
@@ -378,16 +393,31 @@ test.describe('Mosaic', () => {
     await page.getByLabel('Memes', { exact: true }).fill('6');
     await expect(tiles(page)).toHaveCount(6);
 
-    const lastBottom = async () => {
-      const f = await page.getByTestId('mosaic-frame').boundingBox();
-      const rects = await tiles(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().bottom));
-      return Math.max(...rects) - f.y;
+    // How far the tiles reach, right and down (the band can be on either side: rows or columns),
+    // once they stop moving (tiles animate to their new place).
+    const reach = async () => {
+      let prev = null;
+      await expect.poll(async () => {
+        const f = await page.getByTestId('mosaic-frame').boundingBox();
+        const rects = await tiles(page).evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [r.right, r.bottom]; }));
+        const cur = [Math.round(Math.max(...rects.map((r) => r[0])) - f.x), Math.round(Math.max(...rects.map((r) => r[1])) - f.y)];
+        const same = prev && cur[0] === prev[0] && cur[1] === prev[1];
+        prev = cur;
+        return same;
+      }, { intervals: [350] }).toBe(true);
+      return prev;
     };
-    await page.getByLabel('Frame').selectOption('9:16'); // tall frame → vertical leftover
+    // One meme: memes are random, and some sets leave almost no band to spread. A single image
+    // never matches the 9:16 frame exactly, so there's always a band.
+    await page.getByLabel('Memes', { exact: true }).fill('1');
+    await page.getByLabel('Memes', { exact: true }).press('Enter');
+    await expect(tiles(page)).toHaveCount(1);
+    await page.getByLabel('Frame').selectOption('9:16');
     await page.getByLabel('Leftover space').selectOption('end');
-    const endBottom = await lastBottom();
+    const [endRight, endBottom] = await reach();
     await page.getByLabel('Leftover space').selectOption('distribute');
-    await expect.poll(lastBottom).toBeGreaterThan(endBottom + 1); // spread: last row moves down
+    const [right, bottom] = await reach();
+    expect(right > endRight + 1 || bottom > endBottom + 1).toBe(true); // spread: a lone image is centred instead
   });
 });
 

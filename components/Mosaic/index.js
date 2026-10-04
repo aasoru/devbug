@@ -52,6 +52,28 @@ const Select = ({ label, value, onChange, options }) => (
   </label>
 );
 
+// On/off option laid out like the selects: a button with role="switch" (no Radix). The label
+// wraps it, so clicking the text toggles it too and gives it its accessible name.
+const Switch = ({ label, checked, onChange }) => (
+  <label className="flex flex-col gap-1 text-sm">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="flex h-10 items-center">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={twMerge(
+          'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          checked ? 'bg-primary' : 'bg-input'
+        )}
+      >
+        <span className={twMerge('inline-block h-5 w-5 rounded-full bg-background shadow-sm transition-transform', checked ? 'translate-x-5' : 'translate-x-0.5')} />
+      </button>
+    </span>
+  </label>
+);
+
 // Space available for the frame: the container's width and a height cap — 75% of the window
 // normally, or all the container's height when expanded (where it fills the rest of the screen).
 // The window's size gives the "Screen" frame its shape.
@@ -88,6 +110,7 @@ const Mosaic = () => {
   const [gap, setGap] = useState('4');
   const [leftover, setLeftover] = useState('center');
   const [sizes, setSizes] = useState('similar');
+  const [reorder, setReorder] = useState(true); // the mosaic may change the order to fit better
 
   // Memes (imgflip) and the user's own files share the mosaic; each list is managed on its own
   // (loading other memes keeps the files, and the other way round).
@@ -162,8 +185,9 @@ const Mosaic = () => {
   }, [box, frame, expanded]);
 
   const layout = useMemo(
-    () => layoutMosaic(images, { ...size, gap: Number(gap), leftover, sizes }),
-    [images, size, gap, leftover, sizes]
+    // Rows or columns, whichever leaves less empty space.
+    () => layoutMosaic(images, { ...size, gap: Number(gap), leftover, sizes, reorder, flow: 'auto' }),
+    [images, size, gap, leftover, sizes, reorder]
   );
 
   const load = async (n = count) => {
@@ -386,7 +410,7 @@ const Mosaic = () => {
       </div>
 
       {showOptions && (
-        <div id="mosaic-options" className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div id="mosaic-options" className="grid grid-cols-2 lg:grid-cols-6 gap-3">
           <Select label="Frame" value={frame} onChange={setFrame} options={FRAMES.map((f) => ({ value: f.value, label: f.label ?? f.value }))} />
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted-foreground">Memes</span>
@@ -405,6 +429,7 @@ const Mosaic = () => {
           <Select label="Gap" value={gap} onChange={setGap} options={GAPS.map((g) => ({ value: String(g), label: `${g}px` }))} />
           <Select label="Sizes" value={sizes} onChange={setSizes} options={SIZES} />
           <Select label="Leftover space" value={leftover} onChange={setLeftover} options={LEFTOVER} />
+          <Switch label="Reorder to fit" checked={reorder} onChange={setReorder} />
         </div>
       )}
 
@@ -427,7 +452,7 @@ const Mosaic = () => {
         <p className="text-sm text-muted-foreground" data-testid="mosaic-stats">
           {localImages.length > 0 && `${localImages.length}/${LOCAL_LIMITS.maxFiles} files · `}
           {memes.length > 0 && `${memes.length} ${memes.length === 1 ? 'meme' : 'memes'} · `}
-          {layout.rows} {layout.rows === 1 ? 'row' : 'rows'} · empty space {(layout.empty * 100).toFixed(1)}% ({bandLabel})
+          {layout.rows} {layout.flow === 'columns' ? (layout.rows === 1 ? 'column' : 'columns') : (layout.rows === 1 ? 'row' : 'rows')} · empty space {(layout.empty * 100).toFixed(1)}% ({bandLabel})
         </p>
       )}
 
