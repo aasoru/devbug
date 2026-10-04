@@ -8,7 +8,7 @@ export const LOCAL_LIMITS = {
   maxBytes: 30 * 1024 * 1024, // 30 MB per image
   maxPixels: 50_000_000, // 50 MP before downscaling (fits 48 MP phone photos)
   maxSide: 2048, // long side of the image copy that is kept
-  maxVideos: 6,
+  maxVideos: 10,
   maxVideoBytes: 200 * 1024 * 1024, // 200 MB per video
 };
 

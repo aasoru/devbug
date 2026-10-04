@@ -25,3 +25,14 @@ export function pickSafeMemes(memes, count, random = Math.random) {
   }
   return safe.slice(0, count).map(({ id, name, url, width, height }) => ({ id: String(id), name, url, width, height }));
 }
+
+export const MIN_MEMES = 1;
+export const MAX_MEMES = SAFE_MEME_IDS.size; // can't show more memes than the reviewed ones
+export const DEFAULT_MEMES = 12;
+
+// How many memes to load from what the user typed: a whole number within MIN..MAX, or
+// `fallback` when it isn't a number at all.
+export function memeCount(raw, fallback = DEFAULT_MEMES) {
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isNaN(parsed) ? fallback : Math.min(MAX_MEMES, Math.max(MIN_MEMES, parsed));
+}

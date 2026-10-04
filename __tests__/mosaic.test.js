@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { layoutMosaic, MAX_ROW_RATIO, SIZE_PENALTY } from '@/components/Mosaic/layout';
-import { pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
+import { DEFAULT_MEMES, MAX_MEMES, memeCount, pickSafeMemes, SAFE_MEME_IDS } from '@/components/Mosaic/memes';
 import { checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/limits';
 
 const img = (id, width, height) => ({ id: String(id), width, height });
@@ -292,6 +292,16 @@ describe('pickSafeMemes', () => {
     expect(pickSafeMemes(memes, 1)).toHaveLength(1);
   });
 
+  it('memeCount keeps what the user typed within 1..81', () => {
+    expect(memeCount('6')).toBe(6);
+    expect(memeCount('0')).toBe(1);
+    expect(memeCount('-5')).toBe(1);
+    expect(memeCount('500')).toBe(MAX_MEMES);
+    expect(memeCount('7.9')).toBe(7);
+    expect(memeCount('')).toBe(DEFAULT_MEMES); // not a number: the fallback
+    expect(memeCount('abc', 20)).toBe(20);
+  });
+
   it('the allowlist has the 81 reviewed templates', () => {
     expect(SAFE_MEME_IDS.size).toBe(81);
     // Removed in the second review: profanity in the image, blood, a gun, and borderline ones.
@@ -333,25 +343,25 @@ describe('local videos', () => {
     expect(checkFile({ name: 'long.mov', type: 'video/quicktime', size: 201 * MB })).toBe('long.mov: too large (201.0 MB, max 200 MB)');
   });
 
-  it('at most 6 videos, counting only those actually added', () => {
+  it('at most 10 videos, counting only those actually added', () => {
     const video = file('v.mp4', 'video/mp4'), image = file('p.png', 'image/png');
     const videos = (n) => Array.from({ length: n }, () => ({ kind: 'video' }));
     expect(overLimit(video, [])).toBeNull();
-    expect(overLimit(video, videos(5))).toBeNull();
-    expect(overLimit(video, videos(6))).toBe('videos');
-    expect(overLimit(image, videos(6))).toBeNull(); // images still fit
+    expect(overLimit(video, videos(9))).toBeNull();
+    expect(overLimit(video, videos(10))).toBe('videos');
+    expect(overLimit(image, videos(10))).toBeNull(); // images still fit
   });
 
   it('20 files in total, images and videos together', () => {
     const full = Array.from({ length: 20 }, () => ({ kind: 'image' }));
     expect(overLimit(file('a.png', 'image/png'), full)).toBe('files');
     expect(overLimit(file('a.mp4', 'video/mp4'), full)).toBe('files');
-    expect(LOCAL_LIMITS.maxVideos).toBe(6);
+    expect(LOCAL_LIMITS.maxVideos).toBe(10);
   });
 
   it('explains what was left out', () => {
-    expect(limitMessages({ videos: 1 })).toEqual(['1 video was not added: the limit is 6 videos']);
-    expect(limitMessages({ files: 2, videos: 3 })).toEqual(['3 videos were not added: the limit is 6 videos', '2 files were not added: the limit is 20 files']);
+    expect(limitMessages({ videos: 1 })).toEqual(['1 video was not added: the limit is 10 videos']);
+    expect(limitMessages({ files: 2, videos: 3 })).toEqual(['3 videos were not added: the limit is 10 videos', '2 files were not added: the limit is 20 files']);
     expect(limitMessages({})).toEqual([]);
   });
 });

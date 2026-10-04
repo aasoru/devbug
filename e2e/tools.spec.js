@@ -197,10 +197,12 @@ test.describe('Mosaic', () => {
   };
 
   const tiles = (page) => page.getByTestId('mosaic-frame').locator('a');
-  // Memes are in the menu of the arrow next to "Add files".
-  const loadMemes = async (page, name = 'Load random memes') => {
+  // Memes are in the popover of the arrow next to "Add files", with how many to load.
+  const memesForm = (page) => page.getByRole('dialog', { name: 'Load memes' });
+  const loadMemes = async (page, { count, name = 'Load random memes' } = {}) => {
     await page.getByRole('button', { name: 'More ways to add' }).click();
-    await page.getByRole('menuitem', { name }).click();
+    if (count !== undefined) await memesForm(page).getByLabel('Memes').fill(String(count));
+    await memesForm(page).getByRole('button', { name }).click();
   };
 
   test('loads nothing until the button is pressed', async ({ page }) => {
@@ -312,7 +314,7 @@ test.describe('Mosaic', () => {
     await expect(page.getByRole('img', { name: 'mine.png' })).toBeVisible();
     await expect(page.getByTestId('mosaic-stats')).toContainText('1/20 files · 12 memes');
 
-    await loadMemes(page, 'Load other memes'); // other memes, my file stays
+    await loadMemes(page, { name: 'Load other memes' }); // other memes, my file stays
     await expect(tiles(page)).toHaveCount(12);
     await expect(page.getByRole('img', { name: 'mine.png' })).toBeVisible();
 
@@ -320,21 +322,32 @@ test.describe('Mosaic', () => {
     await expect(page.getByTestId('mosaic-frame').locator('img')).toHaveCount(0);
   });
 
-  test('the arrow menu works with the keyboard and closes with Esc or a click outside', async ({ page }) => {
+  test('the arrow popover works with the keyboard and closes with Esc or a click outside', async ({ page }) => {
+    await mockImgflip(page);
     await page.goto('/mosaic');
     const arrow = page.getByRole('button', { name: 'More ways to add' });
     await expect(arrow).toHaveAttribute('aria-expanded', 'false');
 
     await arrow.click();
     await expect(arrow).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.getByRole('menuitem', { name: 'Load random memes' })).toBeFocused();
+    const count = memesForm(page).getByLabel('Memes');
+    await expect(count).toBeFocused(); // ready to type: 12 is selected
+    await expect(count).toHaveValue('12');
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('menu')).toBeHidden();
+    await expect(memesForm(page)).toBeHidden();
     await expect(arrow).toBeFocused();
 
     await arrow.click();
     await page.getByRole('heading').first().click();
-    await expect(page.getByRole('menu')).toBeHidden();
+    await expect(memesForm(page)).toBeHidden();
+
+    // Keyboard only: open, type a number over the selected one, Enter.
+    await arrow.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('5');
+    await page.keyboard.press('Enter');
+    await expect(tiles(page)).toHaveCount(5);
+    await expect(memesForm(page)).toBeHidden();
   });
 
   test('on a phone, full screen with the "Screen" frame fills the whole height', async ({ page }) => {
@@ -373,25 +386,23 @@ test.describe('Mosaic', () => {
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 
+  test('asks how many memes, clamps the number and remembers it', async ({ page }) => {
+    await mockImgflip(page);
+    await page.goto('/mosaic');
+    await loadMemes(page, { count: 6 });
+    await expect(tiles(page)).toHaveCount(6);
+
+    // Out of range: 0 → 1. The popover opens with the last number used.
+    await loadMemes(page, { count: 0, name: 'Load other memes' });
+    await expect(tiles(page)).toHaveCount(1);
+    await page.getByRole('button', { name: 'More ways to add' }).click();
+    await expect(memesForm(page).getByLabel('Memes')).toHaveValue('1');
+  });
+
   test('options re-layout the mosaic', async ({ page }) => {
     await mockImgflip(page);
     await page.goto('/mosaic');
-    await loadMemes(page);
-    await expect(tiles(page)).toHaveCount(12);
-
-    await page.getByLabel('Memes', { exact: true }).fill('6');
-    await page.getByLabel('Memes', { exact: true }).press('Enter');
-    await expect(tiles(page)).toHaveCount(6);
-
-    // Out-of-range values are clamped: 0 → 1.
-    await page.getByLabel('Memes', { exact: true }).fill('0');
-    await page.getByLabel('Memes', { exact: true }).press('Enter');
-    await expect(page.getByLabel('Memes', { exact: true })).toHaveValue('1');
-    await expect(tiles(page)).toHaveCount(1);
-
-    // Typing pauses are enough — no Enter needed.
-    await page.getByLabel('Memes', { exact: true }).fill('6');
-    await expect(tiles(page)).toHaveCount(6);
+    await expect(page.getByLabel('Memes')).toHaveCount(0); // the count is asked with the memes, not in the options
 
     // How far the tiles reach, right and down (the band can be on either side: rows or columns),
     // once they stop moving (tiles animate to their new place).
@@ -409,8 +420,7 @@ test.describe('Mosaic', () => {
     };
     // One meme: memes are random, and some sets leave almost no band to spread. A single image
     // never matches the 9:16 frame exactly, so there's always a band.
-    await page.getByLabel('Memes', { exact: true }).fill('1');
-    await page.getByLabel('Memes', { exact: true }).press('Enter');
+    await loadMemes(page, { count: 1 });
     await expect(tiles(page)).toHaveCount(1);
     await page.getByLabel('Frame').selectOption('9:16');
     await page.getByLabel('Leftover space').selectOption('end');
@@ -583,17 +593,17 @@ test.describe('Mosaic — my files: videos', () => {
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': false });
   });
 
-  test('allows at most 6 videos and rejects unplayable ones', async ({ page }) => {
+  test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {
     await page.goto('/mosaic');
     const clips = [];
-    for (let i = 0; i < 7; i++) clips.push(await recordWebm(page, 160 + i * 20, 120, `clip-${i}.webm`));
-    // The broken one comes first: it must not use up one of the 6 video slots.
+    for (let i = 0; i < 11; i++) clips.push(await recordWebm(page, 160 + i * 20, 120, `clip-${i}.webm`));
+    // The broken one comes first: it must not use up one of the 10 video slots.
     await page.getByTestId('mosaic-file-input').setInputFiles([
       { name: 'broken.mp4', mimeType: 'video/mp4', buffer: Buffer.from('not a video') }, ...clips,
     ]);
-    await expect(videos(page)).toHaveCount(6);
+    await expect(videos(page)).toHaveCount(10);
     const notices = page.getByTestId('mosaic-notices');
-    await expect(notices).toContainText('1 video was not added: the limit is 6 videos');
+    await expect(notices).toContainText('1 video was not added: the limit is 10 videos');
     await expect(notices).toContainText("broken.mp4: this browser can't play this video format");
   });
 });
