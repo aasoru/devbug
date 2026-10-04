@@ -1,16 +1,14 @@
 import { Maximize, Minimize, Pause, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { LOCAL_LIMITS } from './limits';
+import { formatSize, LOCAL_LIMITS } from './limits';
 import { AddMenu } from './AddMenu';
 import { ToolbarButton } from './ToolbarButton';
-
-const MB = 1024 * 1024;
 
 // What happens with the user's files and where memes come from (hidden in full screen).
 const PrivacyNote = () => (
   <p className="text-xs text-muted-foreground">
     Your files stay on this device — nothing is uploaded. Up to {LOCAL_LIMITS.maxFiles} files:{' '}
-    images up to {LOCAL_LIMITS.maxBytes / MB} MB and {LOCAL_LIMITS.maxPixels / 1e6} MP (scaled down to {LOCAL_LIMITS.maxSide} px),{' '}
-    and {LOCAL_LIMITS.maxVideos} videos up to {LOCAL_LIMITS.maxVideoBytes / MB} MB. Videos play muted: click one to hear it (one at a time).{' '}
+    images up to {formatSize(LOCAL_LIMITS.maxBytes, 0)} and {LOCAL_LIMITS.maxPixels / 1e6} MP (scaled down to {LOCAL_LIMITS.maxSide} px),{' '}
+    and {LOCAL_LIMITS.maxVideos} videos up to {formatSize(LOCAL_LIMITS.maxVideoBytes, 0)} and 4K. Videos play muted: tap one to hear it (one at a time), double-tap it to see it big with its controls.{' '}
     Memes load from{' '}
     <a href="https://imgflip.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">imgflip.com</a>{' '}
     only when you pick “Load random memes” from the arrow next to “Add files”.

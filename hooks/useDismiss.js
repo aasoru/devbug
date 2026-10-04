@@ -9,7 +9,7 @@ const openPopups = [];
 // Closes a popup (menu, drawer…) while it's open: on a pointer press outside `ref`'s element,
 // or on Esc. Esc is caught in the capture phase and stopped, so it closes only the newest popup
 // and not whatever else listens for it (e.g. a full screen overlay behind it).
-// onDismiss receives the reason: 'outside' | 'escape'.
+// onDismiss receives the reason: 'outside' | 'escape'. With `ref` null, only Esc dismisses.
 export function useDismiss(ref, open, onDismiss) {
   const dismiss = useEffectEvent(onDismiss);
 
@@ -18,7 +18,7 @@ export function useDismiss(ref, open, onDismiss) {
     const self = {};
     openPopups.push(self);
     const onPointer = (e) => {
-      if (!ref.current?.contains(e.target)) dismiss('outside');
+      if (ref && !ref.current?.contains(e.target)) dismiss('outside');
     };
     const onKey = (e) => {
       if (e.key !== 'Escape' || openPopups.at(-1) !== self) return;

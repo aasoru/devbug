@@ -640,7 +640,8 @@ test.describe('Mosaic — my files: videos', () => {
     await page.locator('video[aria-label="two.webm"]').click(); // sound moves to another video
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': false, 'three.webm': true });
 
-    await page.locator('video[aria-label="two.webm"]').click(); // clicking it again mutes everything
+    await page.waitForTimeout(400); // a second tap right away would be a double tap
+    await page.locator('video[aria-label="two.webm"]').click(); // tapping it again mutes everything
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': true });
 
     // Keyboard: the speaker button does the same, and shows up when it gets focus.
@@ -649,6 +650,36 @@ test.describe('Mosaic — my files: videos', () => {
     await expect.poll(() => shown('three.webm')).toBe('1');
     await page.keyboard.press('Enter');
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': false });
+  });
+
+  test('a double tap shows the video big, with sound and its controls; back returns to the mosaic', async ({ page }) => {
+    await page.goto('/mosaic');
+    const clips = [await recordWebm(page, 320, 180, 'one.webm'), await recordWebm(page, 180, 320, 'two.webm')];
+    await page.getByTestId('mosaic-file-input').setInputFiles(clips);
+    await expect(videos(page)).toHaveCount(2);
+    const one = page.locator('video[aria-label="one.webm"]');
+    const tile = one.locator('..');
+    const before = await tile.boundingBox();
+
+    await one.dblclick();
+    const frame = await page.getByTestId('mosaic-frame').boundingBox();
+    await expect.poll(async () => { const b = await tile.boundingBox(); return [Math.round(b.width), Math.round(b.height)]; })
+      .toEqual([Math.round(frame.width) - 2, Math.round(frame.height) - 2]); // fills the frame (inside its 1px border)
+    await expect.poll(() => one.evaluate((v) => ({ muted: v.muted, controls: v.controls }))).toEqual({ muted: false, controls: true });
+    await expect(page.getByRole('button', { name: 'Remove one.webm' })).toHaveCount(0); // no tile buttons while big
+
+    const back = page.getByRole('button', { name: 'Back to the mosaic from one.webm' });
+    await back.click();
+    await expect(back).toHaveCount(0);
+    await expect.poll(() => one.evaluate((v) => ({ muted: v.muted, controls: v.controls }))).toEqual({ muted: true, controls: false });
+    await expect.poll(async () => Math.round((await tile.boundingBox()).width)).toBe(Math.round(before.width));
+
+    // Esc goes back too.
+    await one.dblclick();
+    await expect(page.getByRole('button', { name: 'Back to the mosaic from one.webm' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Back to the mosaic from one.webm' })).toHaveCount(0);
+    await expect.poll(() => one.evaluate((v) => v.muted)).toBe(true);
   });
 
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {

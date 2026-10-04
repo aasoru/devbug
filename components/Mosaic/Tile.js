@@ -1,10 +1,14 @@
-import { Volume2, VolumeX, X } from 'lucide-react';
+import { Minimize2, Volume2, VolumeX, X } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 
-const TILE = 'absolute transition-all duration-300';
+import { useDismiss } from '@/hooks/useDismiss';
 
-// The image or video itself, filling its tile.
-function Picture({ item, playback }) {
+const TILE = 'absolute transition-all duration-300';
+const CORNER_BUTTON = 'absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white';
+
+// The image or video itself, filling its tile. A focused video shows its own controls, and taps
+// go to them instead of toggling the sound.
+function Picture({ item, playback, focused }) {
   if (item.kind === 'video') {
     return (
       // Muted + playsInline: required for autoplay (iPhone Safari won't autoplay otherwise).
@@ -17,8 +21,9 @@ function Picture({ item, playback }) {
         playsInline
         autoPlay={playback.playing}
         preload="auto"
-        onClick={() => playback.toggleAudio(item.id)}
-        className="h-full w-full cursor-pointer"
+        controls={focused}
+        onClick={focused ? undefined : () => playback.tap(item.id)}
+        className={twMerge('h-full w-full', !focused && 'cursor-pointer')}
       />
     );
   }
@@ -48,10 +53,23 @@ function SoundButton({ item, playback }) {
   );
 }
 
-// One placed item. The user's files can be removed (and videos unmuted); memes link back to
-// imgflip.com, as its terms require.
+// Back from the big video to the mosaic (Esc too); its sound goes off.
+function UnfocusButton({ item, playback }) {
+  useDismiss(null, true, playback.unfocus);
+  return (
+    <button type="button" aria-label={`Back to the mosaic from ${item.name}`} onClick={playback.unfocus} className={CORNER_BUTTON}>
+      <Minimize2 className="h-4 w-4" />
+    </button>
+  );
+}
+
+// One placed item. The user's files can be removed (and videos unmuted, or shown big over the
+// whole frame); memes link back to imgflip.com, as its terms require.
 export function Tile({ item, box, playback, onRemove }) {
-  const style = { left: box.x, top: box.y, width: box.width, height: box.height };
+  const focused = playback.focusedId === item.id;
+  const style = focused
+    ? { left: 0, top: 0, width: '100%', height: '100%' } // the frame's inside, within its border
+    : { left: box.x, top: box.y, width: box.width, height: box.height };
 
   if (item.source !== 'local') {
     return (
@@ -62,17 +80,23 @@ export function Tile({ item, box, playback, onRemove }) {
   }
 
   return (
-    <div className={twMerge(TILE, 'group')} style={style}>
-      <Picture item={item} playback={playback} />
-      {item.kind === 'video' && <SoundButton item={item} playback={playback} />}
-      <button
-        type="button"
-        aria-label={`Remove ${item.name}`}
-        onClick={() => onRemove(item.id)}
-        className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-      >
-        <X className="h-4 w-4" />
-      </button>
+    <div className={twMerge(TILE, 'group', focused && 'z-10 bg-black')} style={style}>
+      <Picture item={item} playback={playback} focused={focused} />
+      {focused ? (
+        <UnfocusButton item={item} playback={playback} />
+      ) : (
+        <>
+          {item.kind === 'video' && <SoundButton item={item} playback={playback} />}
+          <button
+            type="button"
+            aria-label={`Remove ${item.name}`}
+            onClick={() => onRemove(item.id)}
+            className={twMerge(CORNER_BUTTON, 'opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </>
+      )}
     </div>
   );
 }
