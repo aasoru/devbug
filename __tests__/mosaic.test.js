@@ -333,25 +333,25 @@ describe('local videos', () => {
     expect(checkFile({ name: 'long.mov', type: 'video/quicktime', size: 201 * MB })).toBe('long.mov: too large (201.0 MB, max 200 MB)');
   });
 
-  it('at most 6 videos, counting only those actually added', () => {
+  it('at most 10 videos, counting only those actually added', () => {
     const video = file('v.mp4', 'video/mp4'), image = file('p.png', 'image/png');
     const videos = (n) => Array.from({ length: n }, () => ({ kind: 'video' }));
     expect(overLimit(video, [])).toBeNull();
-    expect(overLimit(video, videos(5))).toBeNull();
-    expect(overLimit(video, videos(6))).toBe('videos');
-    expect(overLimit(image, videos(6))).toBeNull(); // images still fit
+    expect(overLimit(video, videos(9))).toBeNull();
+    expect(overLimit(video, videos(10))).toBe('videos');
+    expect(overLimit(image, videos(10))).toBeNull(); // images still fit
   });
 
   it('20 files in total, images and videos together', () => {
     const full = Array.from({ length: 20 }, () => ({ kind: 'image' }));
     expect(overLimit(file('a.png', 'image/png'), full)).toBe('files');
     expect(overLimit(file('a.mp4', 'video/mp4'), full)).toBe('files');
-    expect(LOCAL_LIMITS.maxVideos).toBe(6);
+    expect(LOCAL_LIMITS.maxVideos).toBe(10);
   });
 
   it('explains what was left out', () => {
-    expect(limitMessages({ videos: 1 })).toEqual(['1 video was not added: the limit is 6 videos']);
-    expect(limitMessages({ files: 2, videos: 3 })).toEqual(['3 videos were not added: the limit is 6 videos', '2 files were not added: the limit is 20 files']);
+    expect(limitMessages({ videos: 1 })).toEqual(['1 video was not added: the limit is 10 videos']);
+    expect(limitMessages({ files: 2, videos: 3 })).toEqual(['3 videos were not added: the limit is 10 videos', '2 files were not added: the limit is 20 files']);
     expect(limitMessages({})).toEqual([]);
   });
 });

@@ -583,17 +583,17 @@ test.describe('Mosaic — my files: videos', () => {
     await expect.poll(muted).toEqual({ 'one.webm': true, 'two.webm': true, 'three.webm': false });
   });
 
-  test('allows at most 6 videos and rejects unplayable ones', async ({ page }) => {
+  test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {
     await page.goto('/mosaic');
     const clips = [];
-    for (let i = 0; i < 7; i++) clips.push(await recordWebm(page, 160 + i * 20, 120, `clip-${i}.webm`));
-    // The broken one comes first: it must not use up one of the 6 video slots.
+    for (let i = 0; i < 11; i++) clips.push(await recordWebm(page, 160 + i * 20, 120, `clip-${i}.webm`));
+    // The broken one comes first: it must not use up one of the 10 video slots.
     await page.getByTestId('mosaic-file-input').setInputFiles([
       { name: 'broken.mp4', mimeType: 'video/mp4', buffer: Buffer.from('not a video') }, ...clips,
     ]);
-    await expect(videos(page)).toHaveCount(6);
+    await expect(videos(page)).toHaveCount(10);
     const notices = page.getByTestId('mosaic-notices');
-    await expect(notices).toContainText('1 video was not added: the limit is 6 videos');
+    await expect(notices).toContainText('1 video was not added: the limit is 10 videos');
     await expect(notices).toContainText("broken.mp4: this browser can't play this video format");
   });
 });
