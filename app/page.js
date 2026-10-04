@@ -53,7 +53,7 @@ export default function Home() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">devbug</h1>
         <p className="text-muted-foreground mt-2 max-w-xl">
-          A collection of small, self-contained tools for day-to-day development work. No accounts, no tracking, no backend — everything runs in your browser.
+          A collection of small, self-contained tools for developers and everyday tasks. No accounts, no tracking, no backend — everything runs in your browser.
         </p>
       </div>
 

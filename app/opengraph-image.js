@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'devbug — Developer tools, right in your browser';
+export const alt = 'devbug — Dev tools & handy utilities in your browser';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -33,11 +33,11 @@ export default function OgImage() {
         </div>
 
         <span style={{ fontSize: 28, color: '#a3a3a3', letterSpacing: '0px' }}>
-          Developer tools, right in your browser
+          Dev tools & handy utilities in your browser
         </span>
 
         <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          {['Base64', 'JWT', 'JSON', 'CHMOD', 'Text', 'Chronometer'].map((tool) => (
+          {['Base64', 'JWT', 'JSON', 'CHMOD', 'Text', 'Mosaic'].map((tool) => (
             <div
               key={tool}
               style={{
