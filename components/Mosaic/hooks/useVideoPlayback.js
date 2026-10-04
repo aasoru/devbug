@@ -2,15 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { lockLandscape, unlockOrientation } from '../orientation';
+
 const DOUBLE_TAP_MS = 300;
 
 const videosIn = (ref) => ref.current?.querySelectorAll('video') ?? [];
 const videoById = (ref, id) => [...videosIn(ref)].find((v) => v.dataset.id === id);
 
-// Opens the system's full screen player for a video: the Fullscreen API, or on iPhone Safari
-// (which only allows full screen for videos) its own player. onFail: it couldn't open.
+// Opens the system's full screen player for a video: the Fullscreen API (turning the screen to
+// landscape for a wide video), or on iPhone Safari (which only allows full screen for videos)
+// its own player. onFail: it couldn't open.
 const openPlayer = (video, onFail) => {
-  if (video.requestFullscreen) video.requestFullscreen().catch(onFail);
+  const wide = video.videoWidth > video.videoHeight;
+  if (video.requestFullscreen) video.requestFullscreen().then(() => { if (wide) lockLandscape(); }, onFail);
   else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
   else onFail();
 };
@@ -45,8 +49,12 @@ export function useVideoPlayback(ref, layout) {
   useEffect(() => {
     const video = player && videoById(ref, player.id);
     if (!video) return;
+    let closed = false; // leaving nested full screen fires fullscreenchange more than once
     const close = () => {
+      if (closed) return;
+      closed = true;
       setPlayer(null);
+      unlockOrientation();
       if (player.keepSound && !video.muted) return; // it's already the one unmuted video
       setAudioId(null);
       video.muted = true;
