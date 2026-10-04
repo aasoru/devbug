@@ -8,6 +8,13 @@
 
 const MAX_EXACT = 18; // up to 2^17 partitions — instant; beyond that, a greedy fallback
 export const MAX_ROW_RATIO = 2; // "similar sizes": tallest row at most 2× the shortest
+// "similar sizes" weighs empty space against how uneven the rows are: each split scores its
+// empty share plus SIZE_PENALTY for every MAX_ROW_RATIO-step of unevenness beyond the limit.
+// A hard limit failed both ways: a single row always counts as even (it won with the frame
+// ~90% empty), and giving way past some extra empty space let one giant column win once
+// reordering made a near-perfect uneven fit available.
+export const SIZE_PENALTY = 0.5; // measured: keeps every row within ~2.6× of the others
+const similarScore = (m) => m.empty + SIZE_PENALTY * Math.max(0, m.balance / MAX_ROW_RATIO - 1);
 
 // Every way to cut [0..n) into contiguous rows, as arrays of row sizes.
 function* partitions(n) {
@@ -57,40 +64,27 @@ function measure(ratios, sizes, width, height, gap) {
   return { rows, scale, imageArea, balance, empty: 1 - imageArea / (width * height) };
 }
 
-const isBetter = (a, b) => {
-  for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 1e-9) return a[i] < b[i];
-  return false;
-};
-
-/**
- * @param {{ id: string, width: number, height: number }[]} items
- * @param {{ width: number, height: number, gap?: number, leftover?: 'center' | 'end' | 'distribute',
- *   sizes?: 'similar' | 'any' }} frame  sizes: 'similar' keeps row heights within MAX_ROW_RATIO
- * @returns {{ tiles: { id: string, x: number, y: number, width: number, height: number }[],
- *   rows: number, empty: number, band: 'none' | 'bottom' | 'side' }}
- */
-export function layoutMosaic(items, { width, height, gap = 0, leftover = 'center', sizes = 'similar' }) {
-  const none = { tiles: [], rows: 0, empty: 1, band: 'none' };
-  if (!items.length || width <= 0 || height <= 0) return none;
-
-  const ratios = items.map((it) => it.width / it.height);
-  let best = null;
-  const candidates = items.length <= MAX_EXACT
-    ? partitions(items.length)
+// Best row splits of the items in the given order: the one with the least empty space, and
+// the best with similar row heights (lowest similarScore). The leftover mode only decides where the band goes, never which
+// split is chosen: forcing the band to the bottom was measured to double or triple the empty space.
+function bestSplits(ratios, width, height, gap, maxExact) {
+  let any = null;
+  let similar = null;
+  const candidates = ratios.length <= maxExact
+    ? partitions(ratios.length)
     : [greedyPartition(ratios, width, height)];
   for (const split of candidates) {
     const m = measure(ratios, split, width, height, gap);
     if (!m) continue;
-    // Rank, compared left to right: with sizes = 'similar', balanced splits first (otherwise
-    // the most balanced one wins); then the least empty space. The leftover mode only decides
-    // where the band goes, never which split is chosen: forcing the band to the bottom was
-    // measured to double or triple the empty space.
-    const unbalanced = sizes === 'similar' && m.balance > MAX_ROW_RATIO;
-    m.rank = [unbalanced ? 1 : 0, unbalanced ? m.balance : 0, m.empty];
-    if (!best || isBetter(m.rank, best.rank)) best = m;
+    m.score = similarScore(m);
+    if (!any || m.empty < any.empty - 1e-9) any = m;
+    if (!similar || m.score < similar.score - 1e-9) similar = m;
   }
+  return { any, similar };
+}
 
-  if (!best) return none;
+// Tiles for a chosen split, with the leftover band placed as asked.
+function place(items, ratios, best, { width, height, gap, leftover }) {
   const { rows, scale } = best;
   const rowHeights = rows.map((r) => r.height * scale);
   const usedHeight = rowHeights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
@@ -124,6 +118,78 @@ export function layoutMosaic(items, { width, height, gap = 0, leftover = 'center
   });
 
   return { tiles, rows: rows.length, empty: best.empty, band };
+}
+
+const MAX_PERMUTED = 6; // up to 6! = 720 orders, each with every split — still instant
+const MAX_EXACT_MANY = 13; // trying several orders or both flows: every split up to 13 items
+
+// Orders worth trying when the mosaic may rearrange the items. How much space is left depends
+// only on which items share a row, so for a few items every order is tried (skipping orders
+// that only swap items of the same shape); for more, a few orders that group similar shapes.
+function candidateOrders(items) {
+  const ratio = (it) => it.width / it.height;
+  if (items.length <= MAX_PERMUTED) {
+    const orders = [];
+    const seen = new Set();
+    const permute = (rest, acc) => {
+      if (!rest.length) {
+        const key = acc.map((it) => ratio(it).toFixed(6)).join();
+        if (!seen.has(key)) { seen.add(key); orders.push(acc); }
+        return;
+      }
+      rest.forEach((it, i) => permute([...rest.slice(0, i), ...rest.slice(i + 1)], [...acc, it]));
+    };
+    permute(items, []);
+    return orders;
+  }
+  const asc = [...items].sort((a, b) => ratio(a) - ratio(b));
+  const desc = [...asc].reverse();
+  // Alternating narrow and wide items evens out the rows' total width.
+  const mixed = asc.map((_, i) => (i % 2 ? asc[asc.length - 1 - (i >> 1)] : asc[i >> 1]));
+  return [items, asc, desc, mixed];
+}
+
+// Columns are rows of the transposed frame: swap widths and heights in, and back out.
+const transpose = ({ width, height, ...rest }) => ({ ...rest, width: height, height: width });
+const transposeTile = ({ x, y, width, height, ...rest }) => ({ ...rest, x: y, y: x, width: height, height: width });
+const BAND_TRANSPOSED = { none: 'none', bottom: 'side', side: 'bottom' };
+
+/**
+ * @param {{ id: string, width: number, height: number }[]} items
+ * @param {{ width: number, height: number, gap?: number, leftover?: 'center' | 'end' | 'distribute',
+ *   sizes?: 'similar' | 'any', reorder?: boolean, flow?: 'rows' | 'columns' | 'auto' }} frame
+ *   sizes: 'similar' keeps row (or column) sizes within MAX_ROW_RATIO; reorder: the items may be
+ *   placed in any order; flow: justified rows, justified columns, or whichever leaves less space
+ * @returns {{ tiles: { id: string, x: number, y: number, width: number, height: number }[],
+ *   rows: number, flow: 'rows' | 'columns', empty: number, band: 'none' | 'bottom' | 'side' }}
+ *   rows: how many rows (or columns, when flow is 'columns')
+ */
+export function layoutMosaic(items, { width, height, gap = 0, leftover = 'center', sizes = 'similar', reorder = false, flow = 'rows' }) {
+  const none = { tiles: [], rows: 0, flow: 'rows', empty: 1, band: 'none' };
+  if (!items.length || width <= 0 || height <= 0) return none;
+
+  const orders = reorder ? candidateOrders(items) : [items];
+  const flows = flow === 'auto' ? ['rows', 'columns'] : [flow];
+  const maxExact = orders.length * flows.length > 1 ? MAX_EXACT_MANY : MAX_EXACT;
+  let any = null;
+  let similar = null;
+  for (const f of flows) {
+    const frame = f === 'rows' ? { width, height } : { width: height, height: width };
+    for (const order of orders) {
+      const ordered = f === 'rows' ? order : order.map(transpose);
+      const ratios = ordered.map((it) => it.width / it.height);
+      const found = bestSplits(ratios, frame.width, frame.height, gap, maxExact);
+      if (!found.any) continue;
+      if (!any || found.any.empty < any.m.empty - 1e-9) any = { m: found.any, f, frame, ordered, ratios };
+      if (!similar || found.similar.score < similar.m.score - 1e-9) similar = { m: found.similar, f, frame, ordered, ratios };
+    }
+  }
+
+  if (!any) return none;
+  const best = sizes === 'similar' ? similar : any;
+  const placed = place(best.ordered, best.ratios, best.m, { ...best.frame, gap, leftover });
+  if (best.f === 'rows') return { ...placed, flow: 'rows' };
+  return { ...placed, tiles: placed.tiles.map(transposeTile), flow: 'columns', band: BAND_TRANSPOSED[placed.band] };
 }
 
 // Imgflip's get_memes returns popular blank templates, with no NSFW filter. Only templates

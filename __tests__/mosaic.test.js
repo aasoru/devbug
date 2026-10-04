@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutMosaic, pickSafeMemes, SAFE_MEME_IDS, MAX_ROW_RATIO, checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/lib';
+import { layoutMosaic, pickSafeMemes, SAFE_MEME_IDS, MAX_ROW_RATIO, SIZE_PENALTY, checkFile, checkPixels, fitWithin, LOCAL_LIMITS, overLimit, limitMessages } from '@/components/Mosaic/lib';
 
 const img = (id, width, height) => ({ id: String(id), width, height });
 const EPS = 1e-6;
@@ -73,15 +73,33 @@ describe('layoutMosaic leftover band', () => {
     expect(min).toBeLessThan(emptyFor([1, 1, 1, 1, 1, 1]));
   });
 
-  it('"similar" keeps row heights within MAX_ROW_RATIO, at the cost of some empty space', () => {
-    const rowHeights = (tiles) => [...new Set(tiles.map((t) => Math.round(t.y * 1e6)))].map((y) => tiles.find((t) => Math.round(t.y * 1e6) === y).height);
-    for (const frame of [{ width: 1600, height: 900 }, { width: 1000, height: 1000 }, { width: 900, height: 1600 }]) {
-      const similar = layoutMosaic(ITEMS, { ...frame, sizes: 'similar' });
-      const any = layoutMosaic(ITEMS, { ...frame, sizes: 'any' });
-      const h = rowHeights(similar.tiles);
-      expect(Math.max(...h) / Math.min(...h)).toBeLessThanOrEqual(MAX_ROW_RATIO + 1e-9);
+  it('"similar" trades a little empty space for rows of similar heights', () => {
+    for (const frame of [{ width: 1600, height: 900 }, { width: 1000, height: 1000 }, { width: 900, height: 1600 }]) for (const n of [4, 5, 6, 8, 10]) {
+      const items = ITEMS.slice(0, n);
+      const similar = layoutMosaic(items, { ...frame, sizes: 'similar' });
+      const any = layoutMosaic(items, { ...frame, sizes: 'any' });
       expect(similar.empty).toBeGreaterThanOrEqual(any.empty - 1e-9); // never better than the unconstrained optimum
+      expect(similar.empty).toBeLessThanOrEqual(any.empty + SIZE_PENALTY); // nor much worse
     }
+    // E.g. 5 images in a square frame: "any" leaves 17% empty with one row 4.8× taller than
+    // another; "similar" leaves 26% with every row within MAX_ROW_RATIO.
+    const square = { width: 1000, height: 1000 };
+    const rowHeights = (tiles) => [...new Set(tiles.map((t) => Math.round(t.y * 1e6)))].map((y) => tiles.find((t) => Math.round(t.y * 1e6) === y).height);
+    const spread = (r) => { const h = rowHeights(r.tiles); return Math.max(...h) / Math.min(...h); };
+    const similar = layoutMosaic(ITEMS.slice(0, 5), { ...square, sizes: 'similar' });
+    const any = layoutMosaic(ITEMS.slice(0, 5), { ...square, sizes: 'any' });
+    expect(spread(similar)).toBeLessThanOrEqual(MAX_ROW_RATIO);
+    expect(spread(any)).toBeGreaterThan(4);
+    expect(similar.empty).toBeGreaterThan(any.empty);
+  });
+
+  it('"similar" never leaves the frame almost empty with a single row', () => {
+    // Landscape, ultra-wide and two portraits in a phone frame, in that order: every balanced
+    // split was a single row of thumbnails (~90% empty).
+    const items = [img('l', 1920, 1080), img('w', 2560, 1080), img('p1', 1080, 1920), img('p2', 1080, 1920)];
+    const r = layoutMosaic(items, { width: 374, height: 770, gap: 4, sizes: 'similar' });
+    expect(r.rows).toBeGreaterThan(1);
+    expect(r.empty).toBeLessThan(0.5);
   });
 
   it('with a perfect fit there is no empty space', () => {
@@ -145,6 +163,7 @@ describe('layoutMosaic leftover band', () => {
   });
 
   it('handles empty input and impossible frames', () => {
+    expect(layoutMosaic([], { width: 100, height: 100, reorder: true, flow: 'auto' }).tiles).toEqual([]);
     expect(layoutMosaic([], { width: 100, height: 100 }).tiles).toEqual([]);
     expect(layoutMosaic(ITEMS, { width: 0, height: 100 }).tiles).toEqual([]);
   });
@@ -155,6 +174,100 @@ describe('layoutMosaic leftover band', () => {
     expect(tiles).toHaveLength(30);
     expect(empty).toBeLessThan(0.5);
     tiles.forEach((t) => expect(t.y + t.height).toBeLessThanOrEqual(900 + EPS));
+  });
+});
+
+describe('layoutMosaic reorder and columns', () => {
+  const MIXED = [img('l', 1920, 1080), img('p1', 1080, 1920), img('l2', 1920, 1080), img('p2', 1080, 1920)];
+  const PHONE = { width: 374, height: 770, gap: 4 };
+  const check = (items, frame, { tiles }) => {
+    expect(tiles.map((t) => t.id).sort()).toEqual(items.map((i) => i.id).sort()); // each item once
+    tiles.forEach((t) => {
+      const it = items.find((i) => i.id === t.id);
+      expect(t.width / t.height).toBeCloseTo(it.width / it.height, 6); // no cropping or distortion
+      expect(t.x).toBeGreaterThanOrEqual(-EPS);
+      expect(t.y).toBeGreaterThanOrEqual(-EPS);
+      expect(t.x + t.width).toBeLessThanOrEqual(frame.width + EPS);
+      expect(t.y + t.height).toBeLessThanOrEqual(frame.height + EPS);
+    });
+    for (let a = 0; a < tiles.length; a++)
+      for (let b = a + 1; b < tiles.length; b++) expect(overlaps(tiles[a], tiles[b])).toBe(false);
+  };
+
+  it('reordering never leaves more empty space than keeping the order', () => {
+    for (const frame of [PHONE, { width: 1600, height: 900 }, { width: 1000, height: 1000 }])
+      for (const items of [MIXED, ITEMS.slice(0, 6), ITEMS]) {
+        const kept = layoutMosaic(items, { ...frame, sizes: 'any' });
+        const free = layoutMosaic(items, { ...frame, sizes: 'any', reorder: true });
+        check(items, frame, free);
+        expect(free.empty).toBeLessThanOrEqual(kept.empty + 1e-9);
+      }
+  });
+
+  it('reordering finds splits the given order rules out', () => {
+    // Square, landscape, portrait, ultra-wide: in this order the best is 3 rows (7.9% empty);
+    // reordered, 2 rows (4.6%).
+    const items = [img('s', 1080, 1080), img('l', 1920, 1080), img('p', 1080, 1920), img('w', 2560, 1080)];
+    const kept = layoutMosaic(items, { ...PHONE, sizes: 'any' });
+    const free = layoutMosaic(items, { ...PHONE, sizes: 'any', reorder: true });
+    expect(free.empty).toBeLessThan(kept.empty - 0.02);
+    expect(free.rows).toBeLessThan(kept.rows);
+  });
+
+  it('without reorder the order is kept, also in columns', () => {
+    for (const flow of ['rows', 'columns', 'auto']) {
+      const r = layoutMosaic(MIXED, { ...PHONE, flow });
+      // Reading order: rows top to bottom then left to right; columns left to right then top to bottom.
+      const key = (t) => (r.flow === 'rows' ? [t.y, t.x] : [t.x, t.y]);
+      const sorted = [...r.tiles].sort((a, b) => key(a)[0] - key(b)[0] || key(a)[1] - key(b)[1]);
+      expect(sorted.map((t) => t.id)).toEqual(MIXED.map((i) => i.id));
+    }
+  });
+
+  it('columns lay out like rows of the transposed frame', () => {
+    const items = [img('a', 100, 100), img('b', 100, 100)];
+    const r = layoutMosaic(items, { width: 300, height: 100, flow: 'columns', leftover: 'end' });
+    expect(r.flow).toBe('columns');
+    expect(r.rows).toBe(2); // two columns of one square each
+    expect(r.tiles.map((t) => [t.x, t.y, t.width, t.height])).toEqual([[0, 0, 100, 100], [100, 0, 100, 100]]);
+    expect(r.band).toBe('side'); // leftover on the right
+  });
+
+  it('"auto" picks rows or columns, whichever leaves less empty space', () => {
+    for (const frame of [PHONE, { width: 1600, height: 900 }])
+      for (const items of [MIXED, ITEMS]) {
+        const rows = layoutMosaic(items, { ...frame, sizes: 'any', flow: 'rows' });
+        const cols = layoutMosaic(items, { ...frame, sizes: 'any', flow: 'columns' });
+        const auto = layoutMosaic(items, { ...frame, sizes: 'any', flow: 'auto' });
+        check(items, frame, auto);
+        expect(auto.empty).toBeCloseTo(Math.min(rows.empty, cols.empty), 9);
+      }
+  });
+
+  it('"similar" with reordering keeps sizes even, not one giant row or column', () => {
+    // Random mixes of shapes (deterministic): reordering finds near-perfect fits with one huge
+    // tile next to tiny ones; "similar" must not take them.
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const shapes = [[1920, 1080], [1080, 1920], [1080, 1080], [2560, 1080], [600, 1600]];
+    for (let t = 0; t < 60; t++) {
+      const items = Array.from({ length: 3 + Math.floor(rnd() * 10) }, (_, i) => { const [w, h] = shapes[Math.floor(rnd() * shapes.length)]; return img(i, w, h); });
+      for (const frame of [PHONE, { width: 1660, height: 1015, gap: 4 }]) {
+        const r = layoutMosaic(items, { ...frame, sizes: 'similar', reorder: true, flow: 'auto' });
+        const sizes = r.tiles.map((tile) => (r.flow === 'rows' ? tile.height : tile.width));
+        expect(Math.max(...sizes) / Math.min(...sizes)).toBeLessThanOrEqual(3);
+      }
+    }
+  });
+
+  it('stays fast with the most files allowed', () => {
+    const many = Array.from({ length: 20 }, (_, i) => img(i, [1920, 1080, 1080, 2560][i % 4], [1080, 1920, 1080, 1080][i % 4]));
+    for (const n of [6, 13, 20]) {
+      const t = performance.now();
+      const r = layoutMosaic(many.slice(0, n), { ...PHONE, reorder: true, flow: 'auto' });
+      expect(performance.now() - t).toBeLessThan(200);
+      check(many.slice(0, n), PHONE, r);
+    }
   });
 });
 
