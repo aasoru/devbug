@@ -37,6 +37,7 @@ export function PermissionTable({ perms, onToggle }) {
                 <td key={entity.key} className="text-center align-middle p-1 sm:p-2">
                   <Checkbox
                     className="h-8 w-8 mx-auto"
+                    aria-label={`${entity.label}: ${bit.label.toLowerCase()}`}
                     checked={perms[entity.key][bit.key]}
                     onClick={() => onToggle(entity.key, bit.key)}
                   />

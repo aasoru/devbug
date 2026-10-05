@@ -79,7 +79,8 @@
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
  
-    --destructive: 0 84.2% 60.2%;
+    /* Used for error text and borders: 6.5:1 on white (WCAG AA asks 4.5:1). */
+    --destructive: 0 73.7% 41.8%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
@@ -111,7 +112,8 @@
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
  
-    --destructive: 0 62.8% 30.6%;
+    /* Light red on the dark background: about 7:1. */
+    --destructive: 0 91.1% 71.4%;
     --destructive-foreground: 210 40% 98%;
  
     --border: 217.2 32.6% 17.5%;

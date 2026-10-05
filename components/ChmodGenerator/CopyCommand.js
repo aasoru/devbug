@@ -11,7 +11,7 @@ export function CopyCommand({ command }) {
   return (
     <>
       <div className="flex w-full max-w-sm mx-auto items-center gap-2">
-        <Input value={command} readOnly />
+        <Input value={command} readOnly aria-label="chmod command" />
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>

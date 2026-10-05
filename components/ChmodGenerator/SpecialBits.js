@@ -16,6 +16,7 @@ export function SpecialBits({ special, onToggle }) {
           <div key={bit.key} className="flex flex-col items-center gap-2">
             <Checkbox
               className="h-8 w-8 mx-auto"
+              aria-label={bit.label}
               checked={special[bit.key]}
               onClick={() => onToggle(bit.key)}
             />
