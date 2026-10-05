@@ -52,7 +52,7 @@ const JsonMinifier = () => {
             Input {inputBytes > 0 && `· ${inputBytes} bytes`}
           </span>
           <CodeTextarea
-            className="min-h-[500px]"
+            className="h-125"
             value={input}
             onChange={(e) => { setInput(e.target.value); setOutput(''); setError(''); }}
             placeholder='Paste your JSON here...'
@@ -70,7 +70,7 @@ const JsonMinifier = () => {
             )}
           </span>
           <CodeTextarea
-            className="min-h-[500px]"
+            className="h-125"
             value={error ? error : output}
             readOnly
             placeholder="Result will appear here..."

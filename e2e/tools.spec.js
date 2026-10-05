@@ -305,6 +305,38 @@ test.describe('JWT Decoder — behaviour', () => {
   });
 });
 
+test.describe('JSON Minifier — line numbers', () => {
+  test('the numbers follow the text as it scrolls, and stay in step at the end', async ({ page }) => {
+    await page.goto('/json-minifier');
+    const input = page.getByPlaceholder('Paste your JSON here...');
+    await input.fill(Array.from({ length: 2000 }, (_, i) => `"line ${i + 1}"`).join('\n'));
+    // The number shown level with the textarea's first visible line, at a few scroll positions.
+    const numberAtTop = () => input.evaluate((ta) => {
+      const gutter = ta.previousElementSibling;
+      const lineH = parseFloat(getComputedStyle(ta).lineHeight);
+      const y = ta.getBoundingClientRect().top + parseFloat(getComputedStyle(ta).paddingTop) + lineH / 2;
+      const hit = document.elementsFromPoint(gutter.getBoundingClientRect().right - 16, y).find((e) => gutter.contains(e) && e !== gutter && /^\d+$/.test(e.textContent));
+      return hit && Number(hit.textContent);
+    });
+    const scrollToLine = (line) => input.evaluate((ta, l) => {
+      ta.scrollTop = (l - 1) * parseFloat(getComputedStyle(ta).lineHeight);
+      ta.dispatchEvent(new Event('scroll'));
+    }, line);
+    for (const line of [1, 2, 500, 1234]) {
+      await scrollToLine(line);
+      await expect.poll(numberAtTop).toBe(line);
+    }
+    await input.evaluate((ta) => { ta.scrollTop = ta.scrollHeight; ta.dispatchEvent(new Event('scroll')); });
+    const last = await input.evaluate((ta) => {
+      const gutter = ta.previousElementSibling;
+      const nums = [...gutter.querySelectorAll('div')].filter((d) => /^\d+$/.test(d.textContent));
+      const bottom = ta.getBoundingClientRect().bottom;
+      return Math.max(...nums.filter((d) => d.getBoundingClientRect().top < bottom).map((d) => Number(d.textContent)));
+    });
+    expect(last).toBe(2000);
+  });
+});
+
 test.describe('JSON Minifier — behaviour', () => {
   const input = (page) => page.getByPlaceholder('Paste your JSON here...');
   const labels = (page) => page.locator('span.text-sm.text-muted-foreground').filter({ hasText: /^(Input|Output)/ });
