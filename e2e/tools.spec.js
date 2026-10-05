@@ -145,6 +145,73 @@ test.describe('Chronometer', () => {
   });
 });
 
+test.describe('Chronometer — behaviour', () => {
+  const display = (page) => page.locator('div.font-mono.text-5xl');
+  const start = async (page) => {
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00') });
+    await page.goto('/chronometer');
+    await page.clock.pauseAt(new Date('2026-01-01T00:00:10'));
+  };
+
+  test('the display moves while running and laps record the time they were taken', async ({ page }) => {
+    await start(page);
+    await page.getByRole('button', { name: 'Start' }).click();
+    await page.clock.runFor(250);
+    // While running, the display shows the last animation frame's time: up to one frame
+    // (~16 ms) behind. Stopping (below) is exact.
+    await expect(display(page)).toHaveText(/^00:00\.2[45]$/);
+    await page.clock.runFor(750);
+    await page.getByRole('button', { name: 'Lap' }).click();
+    await page.clock.runFor(1500);
+    await page.getByRole('button', { name: 'Lap' }).click();
+    const laps = page.locator('ul.font-mono li');
+    await expect(laps).toHaveCount(2);
+    await expect(laps.nth(0)).toHaveText('Lap 100:01.00');
+    await expect(laps.nth(1)).toHaveText('Lap 200:02.50');
+  });
+
+  test('resume continues from where it stopped', async ({ page }) => {
+    await start(page);
+    await page.getByRole('button', { name: 'Start' }).click();
+    await page.clock.runFor(1200);
+    await page.getByRole('button', { name: 'Stop' }).click();
+    await page.clock.runFor(5000); // stopped: doesn't count
+    await page.getByRole('button', { name: 'Resume' }).click();
+    await page.clock.runFor(800);
+    await page.getByRole('button', { name: 'Stop' }).click();
+    await expect(display(page)).toHaveText('00:02.00');
+  });
+
+  test('shows hours past the first hour', async ({ page }) => {
+    await start(page);
+    await page.getByRole('button', { name: 'Start' }).click();
+    await page.clock.fastForward(3_723_440); // jump ahead without running every tick
+    await page.clock.runFor(10); // 1 h 2 min 3.45 s
+    await page.getByRole('button', { name: 'Stop' }).click();
+    await expect(display(page)).toHaveText('01:02:03.45');
+  });
+
+  test('leaving the page stops all its timers (none keeps running in the background)', async ({ page }) => {
+    // Count timer callbacks (intervals and animation frames) that keep firing.
+    await page.addInitScript(() => {
+      window.timerCalls = 0;
+      const si = window.setInterval;
+      window.setInterval = (fn, ms, ...a) => si(() => { window.timerCalls++; fn(...a); }, ms);
+      const raf = window.requestAnimationFrame;
+      window.requestAnimationFrame = (fn) => raf((t) => { window.timerCalls++; fn(t); });
+    });
+    await page.goto('/chronometer');
+    await page.getByRole('button', { name: 'Start' }).click();
+    await expect.poll(() => page.evaluate(() => window.timerCalls)).toBeGreaterThan(5); // it's running
+    await page.getByRole('link', { name: 'Base64' }).first().click(); // client-side navigation
+    await page.waitForURL('**/base64');
+    await page.waitForTimeout(200);
+    const before = await page.evaluate(() => window.timerCalls);
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => window.timerCalls)).toBe(before);
+  });
+});
+
 test.describe('JWT Decoder', () => {
   test('load example', async ({ page }) => {
     await page.goto('/jwt-decoder');
