@@ -3,14 +3,14 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardTitle,
 } from '@/components/ui/card';
+import { ToolTitle } from '@/components/ToolTitle';
 
 export default function JwtDecoderPage() {
   return (
     <div>
       <Card variant="page">
-        <CardTitle>JWT Decoder</CardTitle>
+        <ToolTitle href="/jwt-decoder">JWT Decoder</ToolTitle>
         <div className="py-4" />
         <CardDescription>
           Decode and inspect JWT tokens. The header and payload are Base64URL-encoded JSON — not encrypted — so anyone can read them without a key.

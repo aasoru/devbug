@@ -3,14 +3,14 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardTitle,
 } from '@/components/ui/card';
+import { ToolTitle } from '@/components/ToolTitle';
 
 export default function JsonMinifierPage() {
   return (
     <div>
       <Card variant="page" className="max-w-none">
-        <CardTitle>JSON Minifier</CardTitle>
+        <ToolTitle href="/json-minifier">JSON Minifier</ToolTitle>
         <div className="py-4" />
         <CardDescription>Minify or prettify JSON. Paste your JSON on the left and get the result on the right.</CardDescription>
         <CardContent>

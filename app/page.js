@@ -1,7 +1,9 @@
+import { ViewTransition } from 'react';
 import Link from 'next/link';
 import { Binary, Braces, FileLock, KeyRound, LayoutDashboard, TextSearch, Timer } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { TOOLS } from '@/shared/tools';
+import { FROM_CARD, toolTitleName } from '@/shared/viewTransitions';
 
 // What each card adds to the tool's name. Kept on this server page, not in shared/tools.js,
 // so the icons and descriptions cost the browser nothing.
@@ -16,13 +18,16 @@ const CARDS = {
 };
 
 const ToolCard = ({ tool, card: { icon: Icon, description } }) => (
-  <Link href={tool.href}>
+  <Link href={tool.href} transitionTypes={[FROM_CARD]}>
     <Card className="max-w-none h-full py-5 px-6 hover:bg-muted/30 transition-colors cursor-pointer flex items-start gap-4">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </span>
       <div>
-        <p className="font-semibold">{tool.name}</p>
+        {/* Morphs into the tool's page title on navigation (ToolTitle). */}
+        <ViewTransition name={toolTitleName(tool.href)} share="morph" default="none">
+          <p className="font-semibold">{tool.name}</p>
+        </ViewTransition>
         <p className="text-sm text-muted-foreground mt-1">{description}</p>
       </div>
     </Card>

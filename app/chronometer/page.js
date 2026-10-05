@@ -4,15 +4,15 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardTitle,
 } from '@/components/ui/card';
+import { ToolTitle } from '@/components/ToolTitle';
 
 export default function Chronometer() {
   return (
     <div>
       {/* <Head title="Chronometer" /> */}
       <Card variant="page">
-        <CardTitle>Chronometer</CardTitle>
+        <ToolTitle href="/chronometer">Chronometer</ToolTitle>
         <div className="py-4" />
         <CardDescription>
           A chronometer is a precision watch used to measure very small
