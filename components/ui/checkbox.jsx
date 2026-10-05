@@ -1,10 +1,9 @@
 "use client"
 
-import * as React from "react"
 import { Check } from "lucide-react"
 import { twMerge } from "tailwind-merge"
 
-const Checkbox = React.forwardRef(({ className, checked, ...props }, ref) => (
+const Checkbox = ({ ref, className, checked, ...props }) => (
   <button
     ref={ref}
     role="checkbox"
@@ -18,7 +17,6 @@ const Checkbox = React.forwardRef(({ className, checked, ...props }, ref) => (
   >
     {checked && <Check className="h-4 w-4" />}
   </button>
-))
-Checkbox.displayName = "Checkbox"
+)
 
 export { Checkbox }

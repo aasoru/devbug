@@ -1,4 +1,3 @@
-//import { Inter } from 'next/font/google'
 import './globals.css';
 
 import { UIProvider } from '@/contexts/ui';
@@ -8,15 +7,14 @@ import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 
-//const inter = Inter({ subsets: ['latin'] });
 import { METADATA } from '@/shared/metadata.js';
 
 export const metadata = METADATA;
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning /* data-theme="dark" */>
-      <body /* className={inter.className} */>
+    <html lang="en" suppressHydrationWarning>
+      <body>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

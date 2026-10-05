@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 import { twMerge } from 'tailwind-merge';
 
 // Card owns the padding (px-6 py-6); its sub-components add none, so everything aligns.
@@ -10,7 +8,7 @@ const variants = {
   page: 'max-sm:rounded-none max-sm:border-0 max-sm:shadow-none max-sm:px-0 max-sm:pt-2',
 };
 
-const Card = React.forwardRef(({ className, variant = 'default', ...props }, ref) => (
+const Card = ({ ref, className, variant = 'default', ...props }) => (
   <div
     ref={ref}
     className={twMerge(
@@ -20,19 +18,9 @@ const Card = React.forwardRef(({ className, variant = 'default', ...props }, ref
     )}
     {...props}
   />
-));
-Card.displayName = 'Card';
+);
 
-const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={twMerge('flex flex-col space-y-1.5', className)}
-    {...props}
-  />
-));
-CardHeader.displayName = 'CardHeader';
-
-const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
+const CardTitle = ({ ref, className, ...props }) => (
   <h3
     ref={ref}
     className={twMerge(
@@ -41,36 +29,22 @@ const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
     )}
     {...props}
   />
-));
-CardTitle.displayName = 'CardTitle';
+);
 
-const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
+const CardDescription = ({ ref, className, ...props }) => (
   <p
     ref={ref}
     className={twMerge('text-sm text-muted-foreground', className)}
     {...props}
   />
-));
-CardDescription.displayName = 'CardDescription';
+);
 
-const CardContent = React.forwardRef(({ className, ...props }, ref) => (
+const CardContent = ({ ref, className, ...props }) => (
   <div ref={ref} className={className} {...props} />
-));
-CardContent.displayName = 'CardContent';
-
-const CardFooter = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={twMerge('flex items-center', className)}
-    {...props}
-  />
-));
-CardFooter.displayName = 'CardFooter';
+);
 
 export {
   Card,
-  CardHeader,
-  CardFooter,
   CardTitle,
   CardDescription,
   CardContent,
