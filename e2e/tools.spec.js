@@ -177,6 +177,31 @@ test.describe('Text Analyzer', () => {
     await page.getByPlaceholder('Search for matches...').fill('hello');
     await expect(stat(page, '"hello"')).toContainText('2');
   });
+
+  test('every stat, with tabs, several lines and leading spaces', async ({ page }) => {
+    await page.goto('/text-analizer');
+    const value = (label) => stat(page, label).locator('span').last();
+    // 23 chars, 17 without whitespace; 3 lines; spaces/tabs: 2 leading + 1 + 1 tab = 4;
+    // words: one two one three one = 5 (3 unique)
+    await page.getByPlaceholder('Input your text...').fill('  one two\none\tthree\none');
+    await expect(value('No spaces')).toHaveText('17');
+    await expect(value('With spaces')).toHaveText('23');
+    await expect(value('Total')).toHaveText('5');
+    await expect(value('Unique')).toHaveText('3');
+    await expect(value('Spaces')).toHaveText('4');
+    await expect(value('Lines')).toHaveText('3');
+
+    await expect(page.getByText('Search', { exact: true })).toBeHidden(); // no search term: no search stat
+    await page.getByPlaceholder('Search for matches...').fill('one');
+    await expect(value('"one"')).toHaveText('3');
+    await page.getByPlaceholder('Search for matches...').fill('zzz');
+    await expect(value('"zzz"')).toHaveText('0');
+    await page.getByPlaceholder('Search for matches...').fill('');
+    await expect(page.getByText('Search', { exact: true })).toBeHidden();
+
+    await page.getByPlaceholder('Input your text...').fill('');
+    for (const label of ['No spaces', 'With spaces', 'Total', 'Unique', 'Spaces', 'Lines']) await expect(value(label)).toHaveText('0');
+  });
 });
 
 test.describe('Mosaic', () => {

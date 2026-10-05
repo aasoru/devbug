@@ -5,6 +5,7 @@ import { twMerge } from 'tailwind-merge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CardDescription } from '@/components/ui/card';
+import { analyzeText } from './lib';
 
 const StatCard = ({ label, value }) => (
   <div className="flex flex-col gap-1 rounded-lg border bg-muted/30 px-4 py-3">
@@ -35,9 +36,7 @@ const TextAnalizer = ({ description }) => {
   const [text, setText] = useState('');
   const [match, setMatch] = useState('');
 
-  const words = text.split(/\s+/).filter((w) => w.trim() !== '');
-  const uniqueWords = new Set(words);
-  const matchCount = match.length > 0 ? text.split(match).length - 1 : 0;
+  const stats = analyzeText(text, match);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
@@ -65,23 +64,23 @@ const TextAnalizer = ({ description }) => {
 
       <div className="order-4 md:order-0 md:col-start-3 md:row-start-2 flex flex-col gap-5">
         <StatGrid>
-          <StatCard label="No spaces" value={text.replace(/\s/g, '').length} />
-          <StatCard label="With spaces" value={text.length} />
+          <StatCard label="No spaces" value={stats.chars} />
+          <StatCard label="With spaces" value={stats.charsWithSpaces} />
         </StatGrid>
 
         <StatGroup title="Words">
-          <StatCard label="Total" value={words.length} />
-          <StatCard label="Unique" value={uniqueWords.size} />
+          <StatCard label="Total" value={stats.words} />
+          <StatCard label="Unique" value={stats.uniqueWords} />
         </StatGroup>
 
         <StatGroup title="Structure">
-          <StatCard label="Spaces" value={(text.match(/[ \t]/g) || []).length} />
-          <StatCard label="Lines" value={text.length > 0 ? text.split('\n').length : 0} />
+          <StatCard label="Spaces" value={stats.spaces} />
+          <StatCard label="Lines" value={stats.lines} />
         </StatGroup>
 
-        {match.length > 0 && (
+        {stats.matches !== null && (
           <StatGroup title="Search">
-            <StatCard label={`"${match}"`} value={matchCount} />
+            <StatCard label={`"${match}"`} value={stats.matches} />
           </StatGroup>
         )}
       </div>
