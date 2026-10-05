@@ -256,8 +256,8 @@ test.describe('JSON Minifier', () => {
     await page.getByRole('button', { name: 'Prettify' }).click();
     await expect(output(page)).toHaveValue('{\n  "a": 1,\n  "b": [\n    1,\n    2\n  ]\n}');
 
-    // Output gutter shows one number per line (7 lines).
-    await expect(page.locator('div[aria-hidden]').nth(1).locator('> div')).toHaveCount(7);
+    // Output gutter shows one number per line (7 lines). (The gutter is the output's sibling.)
+    await expect(output(page).locator('xpath=preceding-sibling::div[1]').locator('> div')).toHaveCount(7);
   });
 
   test('invalid JSON shows error', async ({ page }) => {

@@ -24,6 +24,22 @@ test.describe('Navigation', () => {
     for (const tool of TOOLS) await expect(cards.filter({ hasText: tool.card })).toHaveAttribute('href', tool.path);
   });
 
+  test('the sidebar marks the current section, and only that one', async ({ page }) => {
+    const current = page.locator('aside ul [aria-current="page"]');
+    await page.goto('/');
+    await expect(current).toHaveCount(0); // the home isn't a menu entry
+    for (const tool of TOOLS) {
+      await page.locator('aside').getByRole('link', { name: tool.sidebar, exact: true }).click();
+      await expect(page).toHaveURL(tool.path);
+      await expect(current).toHaveCount(1);
+      await expect(current).toHaveText(tool.sidebar);
+    }
+    // It looks different from the other entries, not only for screen readers.
+    const look = (el) => el.evaluate((e) => getComputedStyle(e).backgroundColor);
+    const other = page.locator('aside ul a:not([aria-current])').first();
+    expect(await look(current)).not.toBe(await look(other));
+  });
+
   test('sidebar navigates client-side, without a full page reload', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => { window.__noReload = true; });
@@ -110,6 +126,18 @@ test.describe('Mobile', () => {
 
     // Click the overlay, outside the sidebar (which is 5/6 of the width).
     await page.mouse.click(365, 400);
+    await expect(sidebar).not.toBeInViewport();
+  });
+
+  test('Esc closes the sidebar', async ({ page }) => {
+    await page.goto('/');
+    const sidebar = page.locator('aside');
+    const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    await expect(sidebar).toBeInViewport();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Escape');
     await expect(sidebar).not.toBeInViewport();
   });
 
