@@ -19,11 +19,13 @@ export const test = base.extend({
 
 export { expect };
 
+// What the user should see for each tool, written out here on purpose (not read from
+// shared/tools.js): a typo in the app's list must fail these tests, not pass them.
 export const TOOLS = [
   { path: '/chronometer', title: 'Chronometer', sidebar: 'Chronometer', card: 'Stopwatch with lap tracking.' },
-  { path: '/text-analizer', title: 'Text Analizer', sidebar: 'Text Analizer', card: 'Character, word and line counts with pattern matching.' },
+  { path: '/text-analizer', title: 'Text Analyzer', sidebar: 'Text Analyzer', card: 'Character, word and line counts with pattern matching.' },
   { path: '/chmod-generator', title: 'CHMOD Generator', sidebar: 'CHMOD Generator', card: 'Calculate Unix file permissions in numeric and symbolic format.' },
-  { path: '/json-minifier', title: 'JSON Minifier', sidebar: 'Json Minifier', card: 'Minify or prettify JSON with size comparison.' },
+  { path: '/json-minifier', title: 'JSON Minifier', sidebar: 'JSON Minifier', card: 'Minify or prettify JSON with size comparison.' },
   { path: '/jwt-decoder', title: 'JWT Decoder', sidebar: 'JWT Decoder', card: 'Inspect JWT header, payload and expiry without a secret key.' },
   { path: '/base64', title: 'Base64 Encoder / Decoder', sidebar: 'Base64', card: 'Encode and decode Base64 with full UTF-8 support.' },
   { path: '/mosaic', title: 'Mosaic', sidebar: 'Mosaic', card: 'Fit images of any size into a frame without cropping, with the least empty space.' },

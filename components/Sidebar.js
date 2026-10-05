@@ -3,6 +3,7 @@
 import { twMerge } from 'tailwind-merge';
 
 import { useUI } from '@/contexts/ui';
+import { TOOLS } from '@/shared/tools';
 
 import BugIcon from '@/public/images/icons/bug.svg';
 import Link from 'next/link';
@@ -37,41 +38,9 @@ const Sidebar = () => {
           </div>
         </Link>
         <ul className="divide-y divide-neutral-600 font-bold">
-          <MenuItem href="/chronometer">
-            <div className="flex items-center gap-3">
-              <span>Chronometer</span>
-            </div>
-          </MenuItem>
-          <MenuItem href="/text-analizer">
-            <div className="flex items-center gap-3">
-              <span>Text Analizer</span>
-            </div>
-          </MenuItem>
-          <MenuItem href="/chmod-generator">
-            <div className="flex items-center gap-3">
-              <span>CHMOD Generator</span>
-            </div>
-          </MenuItem>
-          <MenuItem href="/json-minifier">
-            <div className="flex items-center gap-3">
-              <span>Json Minifier</span>
-            </div>
-          </MenuItem>
-          <MenuItem href="/jwt-decoder">
-            <div className="flex items-center gap-3">
-              <span>JWT Decoder</span>
-            </div>
-          </MenuItem>
-          <MenuItem href="/base64">
-            <div className="flex items-center gap-3">
-              <span>Base64</span>
-            </div>
-          </MenuItem>
-          <MenuItem href="/mosaic">
-            <div className="flex items-center gap-3">
-              <span>Mosaic</span>
-            </div>
-          </MenuItem>
+          {TOOLS.map((tool) => (
+            <MenuItem key={tool.href} href={tool.href}>{tool.name}</MenuItem>
+          ))}
         </ul>
       </aside>
     </>

@@ -15,6 +15,15 @@ test.describe('Smoke', () => {
 });
 
 test.describe('Navigation', () => {
+  test('the sidebar and the home list every tool, and nothing else', async ({ page }) => {
+    await page.goto('/');
+    const menu = page.locator('aside ul').getByRole('link');
+    await expect(menu).toHaveText(TOOLS.map((t) => t.sidebar));
+    const cards = page.locator('main').getByRole('link').filter({ has: page.locator('p.font-semibold') });
+    await expect(cards).toHaveCount(TOOLS.length);
+    for (const tool of TOOLS) await expect(cards.filter({ hasText: tool.card })).toHaveAttribute('href', tool.path);
+  });
+
   test('sidebar navigates client-side, without a full page reload', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => { window.__noReload = true; });
