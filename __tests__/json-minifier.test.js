@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { minify, prettify } from '@/components/JsonMinifier/lib';
+import { minify, prettify, sizeChange, utf8Bytes } from '@/components/JsonMinifier/lib';
 
 describe('JSON Minifier', () => {
   describe('minify', () => {
@@ -39,6 +39,35 @@ describe('JSON Minifier', () => {
     it('prettify → minify returns original minified JSON', () => {
       const original = '{"a":1,"b":[1,2,3],"c":{"d":true}}';
       expect(minify(prettify(original))).toBe(original);
+    });
+  });
+  describe('utf8Bytes', () => {
+    it('matches TextEncoder: 1 to 4 bytes per character', () => {
+      for (const str of ['', 'a', '{"a":1}', 'ñandú', '€', '中文', '😀', 'a😀b', '\ud800', '\udc00', 'x\udc00\ud800']) {
+        expect(utf8Bytes(str)).toBe(new TextEncoder().encode(str).length);
+      }
+    });
+
+    it('matches TextEncoder on random text across the whole BMP', () => {
+      let seed = 1;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let n = 0; n < 500; n++) {
+        const str = Array.from({ length: 20 }, () => String.fromCharCode(Math.floor(rnd() * 0x10000))).join('');
+        expect(utf8Bytes(str)).toBe(new TextEncoder().encode(str).length);
+      }
+    });
+  });
+
+  describe('sizeChange', () => {
+    it('is the whole percent saved, negative when larger', () => {
+      expect(sizeChange(39, 31)).toBe(21);
+      expect(sizeChange(39, 53)).toBe(-36);
+      expect(sizeChange(7, 7)).toBe(0);
+    });
+
+    it('is null without both sizes', () => {
+      expect(sizeChange(0, 10)).toBeNull();
+      expect(sizeChange(10, 0)).toBeNull();
     });
   });
 });
