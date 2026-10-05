@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { base64UrlDecode } from './lib';
+import { decodeToken, isExpired } from './lib';
 import { useCopyToClipboard, copyLabel } from '@/hooks/useCopyToClipboard';
 import CopyErrorAlert from '@/components/CopyErrorAlert';
 
@@ -16,9 +16,9 @@ const formatDate = (unix) =>
   new Date(unix * 1000).toLocaleString();
 
 const ExpiryBadge = ({ exp }) => {
-  const [now] = useState(Date.now);
+  const [now] = useState(Date.now); // when the token was shown: the badge doesn't tick
   if (!exp) return null;
-  const expired = now / 1000 > exp;
+  const expired = isExpired(exp, now);
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${expired ? 'bg-destructive/20 text-destructive' : 'bg-green-500/20 text-green-600 dark:text-green-400'}`}>
       {expired ? 'Expired' : 'Valid'}
@@ -42,11 +42,9 @@ const JwtDecoder = () => {
   const [token, setToken] = useState('');
   const { copy: copyText, status: copyStatus, error: copyError, dismissError } = useCopyToClipboard();
 
-  const parts = token.trim().split('.');
-  const isValid = parts.length === 3;
-  const header = isValid ? base64UrlDecode(parts[0]) : null;
-  const payload = isValid ? base64UrlDecode(parts[1]) : null;
-  const hasError = token.trim().length > 0 && (!isValid || !header || !payload);
+  const decoded = decodeToken(token);
+  const { header, payload } = decoded ?? {};
+  const hasError = token.trim().length > 0 && !decoded;
 
   const copy = () => {
     if (payload) copyText(JSON.stringify(payload, null, 2));

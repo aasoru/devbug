@@ -268,6 +268,66 @@ test.describe('JSON Minifier', () => {
   });
 });
 
+test.describe('JWT Decoder — behaviour', () => {
+  const field = (page) => page.getByPlaceholder('Paste your JWT token here...');
+  const jwt = (payload, header = { alg: 'HS256', typ: 'JWT' }) =>
+    `${Buffer.from(JSON.stringify(header)).toString('base64url')}.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
+
+  test('a token valid until the future, with not-before, and spaces around it', async ({ page }) => {
+    await page.goto('/jwt-decoder');
+    await field(page).fill(`  ${jwt({ sub: 'ñandú', nbf: 1700000000, exp: 4102444800 })}\n`); // exp: 2100
+    await expect(page.getByText('Valid', { exact: true })).toBeVisible();
+    await expect(page.getByText('Not before:')).toBeVisible();
+    await expect(page.getByText('Expires at:')).toBeVisible();
+    await expect(page.getByText('Issued at:')).toBeHidden();
+    await expect(page.locator('pre').nth(1)).toContainText('"sub": "ñandú"'); // UTF-8 in the payload
+    await expect(page.getByText('Invalid JWT token.')).toBeHidden();
+  });
+
+  test('no expiry: no badge and no dates', async ({ page }) => {
+    await page.goto('/jwt-decoder');
+    await field(page).fill(jwt({ sub: '1' }));
+    await expect(page.locator('pre')).toHaveCount(2);
+    await expect(page.getByText('Valid', { exact: true })).toBeHidden();
+    await expect(page.getByText('Expired', { exact: true })).toBeHidden();
+    await expect(page.getByText('Expires at:')).toBeHidden();
+  });
+
+  test('wrong shapes are invalid; an empty field shows nothing', async ({ page }) => {
+    await page.goto('/jwt-decoder');
+    for (const bad of ['only.two', 'a.b.c.d', `${jwt({ a: 1 }).split('.')[0]}.bm90IGpzb24.sig`]) {
+      await field(page).fill(bad);
+      await expect(page.getByText('Invalid JWT token.')).toBeVisible();
+      await expect(page.locator('pre')).toHaveCount(0);
+    }
+    await field(page).fill('   ');
+    await expect(page.getByText('Invalid JWT token.')).toBeHidden();
+  });
+});
+
+test.describe('JSON Minifier — behaviour', () => {
+  const input = (page) => page.getByPlaceholder('Paste your JSON here...');
+  const labels = (page) => page.locator('span.text-sm.text-muted-foreground').filter({ hasText: /^(Input|Output)/ });
+
+  test('byte counts (UTF-8) and how much smaller or larger the output is', async ({ page }) => {
+    await page.goto('/json-minifier');
+    await input(page).fill('{ "name": "ñandú", "list": [ 1, 2 ] }'); // ñ and ú take 2 bytes each
+    await expect(labels(page).nth(0)).toHaveText('Input · 39 bytes');
+    await expect(labels(page).nth(1)).toHaveText('Output');
+
+    await page.getByRole('button', { name: 'Minify' }).click();
+    await expect(labels(page).nth(1)).toHaveText('Output · 31 bytes(21% smaller)');
+
+    await page.getByRole('button', { name: 'Prettify' }).click();
+    await expect(labels(page).nth(1)).toHaveText('Output · 53 bytes(36% larger)');
+
+    await input(page).fill('{"a":1}'); // editing the input clears the output
+    await expect(labels(page).nth(1)).toHaveText('Output');
+    await page.getByRole('button', { name: 'Minify' }).click();
+    await expect(labels(page).nth(1)).toHaveText('Output · 7 bytes'); // same size: no percentage
+  });
+});
+
 test.describe('Base64', () => {
   test('UTF-8 round-trip', async ({ page }) => {
     await page.goto('/base64');

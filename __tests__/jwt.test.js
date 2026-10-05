@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { base64UrlDecode, decodeToken } from '@/components/JwtDecoder/lib';
+import { base64UrlDecode, decodeToken, isExpired } from '@/components/JwtDecoder/lib';
 
 // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
 const SAMPLE_TOKEN =
@@ -44,6 +44,13 @@ describe('JWT Decoder', () => {
     it('handles whitespace around the token', () => {
       const result = decodeToken(`  ${SAMPLE_TOKEN}  `);
       expect(result).not.toBeNull();
+    });
+  });
+  describe('isExpired', () => {
+    it('compares exp (seconds) with now (ms)', () => {
+      expect(isExpired(1000, 999_000)).toBe(false);
+      expect(isExpired(1000, 1_000_000)).toBe(false); // the exact second is still valid
+      expect(isExpired(1000, 1_000_001)).toBe(true);
     });
   });
 });

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import CodeTextarea from '@/components/ui/code-textarea';
 import { Button } from '@/components/ui/button';
-import { minify, prettify } from './lib';
+import { minify, prettify, sizeChange, utf8Bytes } from './lib';
 import { useCopyToClipboard, copyLabel } from '@/hooks/useCopyToClipboard';
 import CopyErrorAlert from '@/components/CopyErrorAlert';
 
@@ -28,11 +28,11 @@ const JsonMinifier = () => {
     if (output) copyText(output);
   };
 
-  const inputBytes = new TextEncoder().encode(input).length;
-  const outputBytes = new TextEncoder().encode(output).length;
-  const savings = inputBytes > 0 && outputBytes > 0
-    ? Math.round((1 - outputBytes / inputBytes) * 100)
-    : null;
+  // Counted only when each text changes (not on every render, e.g. the copy button's state):
+  // a big JSON has millions of characters.
+  const inputBytes = useMemo(() => utf8Bytes(input), [input]);
+  const outputBytes = useMemo(() => utf8Bytes(output), [output]);
+  const savings = sizeChange(inputBytes, outputBytes);
 
   return (
     <>

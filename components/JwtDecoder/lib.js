@@ -18,3 +18,6 @@ export const decodeToken = (token) => {
   if (!header || !payload) return null;
   return { header, payload, signature: parts[2] };
 };
+
+// Whether a JWT `exp` claim (seconds since the epoch) has passed at `nowMs`.
+export const isExpired = (exp, nowMs) => nowMs / 1000 > exp;
