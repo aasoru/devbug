@@ -178,3 +178,44 @@ test.describe('Assets', () => {
     expect(icon.status()).toBe(200);
   });
 });
+
+test.describe('View transitions', () => {
+  // The view transition animations running right after a navigation: [pseudo-element, duration].
+  const transitionAnimations = (page) => page.evaluate(() => document.getAnimations()
+    .filter((a) => a.effect?.pseudoElement?.startsWith('::view-transition'))
+    .map((a) => [a.effect.pseudoElement, a.effect.getComputedTiming().duration]));
+
+  test("a home card's title morphs into the tool's page title, and only that moves", async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(500); // prefetched, so the new page renders in the same commit
+    await page.locator('main').getByRole('link').filter({ hasText: 'Stopwatch with lap tracking.' }).click();
+    let seen = [];
+    await expect.poll(async () => {
+      seen = await transitionAnimations(page);
+      return seen.some(([pseudo]) => pseudo.includes('tool-title-chronometer'));
+    }).toBe(true);
+    // Only the title moves: the content doesn't crossfade on these (React names those groups _t_…).
+    expect(seen.filter(([pseudo]) => pseudo.includes('(_t_'))).toEqual([]);
+    await expect(page.getByRole('heading', { name: 'Chronometer' })).toBeVisible();
+  });
+
+  test('switching tools crossfades the content', async ({ page }) => {
+    await page.goto('/base64');
+    await page.waitForTimeout(500);
+    await page.locator('aside nav').getByRole('link', { name: 'JSON Minifier', exact: true }).click();
+    await expect.poll(async () => (await transitionAnimations(page)).some(([pseudo, ms]) => pseudo.includes('(_t_') && ms > 0)).toBe(true);
+    await expect(page.getByRole('heading', { name: 'JSON Minifier' })).toBeVisible();
+  });
+
+  test('with reduced motion, nothing moves', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/base64');
+    await page.waitForTimeout(500);
+    await page.locator('aside nav').getByRole('link', { name: 'JSON Minifier', exact: true }).click();
+    const seen = [];
+    for (let i = 0; i < 10; i++) { seen.push(...(await transitionAnimations(page))); await page.waitForTimeout(20); }
+    expect(seen.filter(([, ms]) => ms > 0)).toEqual([]);
+    await expect(page.getByRole('heading', { name: 'JSON Minifier' })).toBeVisible();
+  });
+});
+

@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import { RouteTransition } from '@/components/RouteTransition';
 
 import { METADATA } from '@/shared/metadata.js';
 
@@ -39,7 +40,7 @@ export default function RootLayout({ children }) {
 
                     {/* Only the page's content is <main> (the landmark screen readers jump to). */}
                     <main id="content" tabIndex={-1} className="flex flex-col px-4 sm:px-5 pt-2 pb-5 w-full h-auto outline-hidden">
-                      {children}
+                      <RouteTransition>{children}</RouteTransition>
                     </main>
                   </div>
                 </div>

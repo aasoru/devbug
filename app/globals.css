@@ -135,3 +135,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* View transitions (React <ViewTransition>, run on navigation; see RouteTransition, ToolTitle).
+   Clicks pass through to the live page while one runs, so none is lost. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(.morph) {
+  animation-duration: 300ms;
+}
+/* No movement for people who asked their system for less: content swaps at once. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
