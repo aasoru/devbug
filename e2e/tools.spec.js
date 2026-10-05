@@ -51,6 +51,69 @@ test.describe('CHMOD Generator', () => {
   });
 });
 
+test.describe('CHMOD Generator — behaviour', () => {
+  const octal = (page) => page.locator('span.font-mono.text-5xl');
+  const symbolic = (page) => page.locator('span.font-mono.text-3xl');
+  const field = (page) => page.getByPlaceholder('755 or rwxr-xr-x');
+  // The 12 checkboxes: read/write/execute rows × owner/group/other, then setuid, setgid, sticky.
+  const checked = (page) => page.getByRole('checkbox').evaluateAll((els) => els.map((e) => (e.getAttribute('aria-checked') === 'true' ? 1 : 0)).join(''));
+
+  test('the field, the checkboxes, the outputs and the description stay in sync', async ({ page }) => {
+    await page.goto('/chmod-generator');
+    await expect(octal(page)).toHaveText('000');
+    await expect(symbolic(page)).toHaveText('---------');
+    await expect(page.locator('input[readonly]')).toHaveValue('chmod 000 path');
+    for (const who of ['Owner', 'Group', 'Others']) await expect(page.getByText(`${who} has no access`)).toBeVisible();
+
+    await field(page).fill('750');
+    await expect(checked(page)).resolves.toBe('110100110' + '000'); // r: u g -, w: u - -, x: u g -
+    await expect(page.getByText('Owner can read, write and execute')).toBeVisible();
+    await expect(page.getByText('Group can read and execute')).toBeVisible();
+    await expect(page.getByText('Others has no access')).toBeVisible();
+
+    // Toggling a checkbox rewrites the field as octal.
+    await page.getByRole('checkbox').nth(5).click(); // other: write → 752
+    await expect(field(page)).toHaveValue('752');
+    await expect(symbolic(page)).toHaveText('rwxr-x-w-');
+    await expect(page.locator('input[readonly]')).toHaveValue('chmod 752 path');
+
+    // Emptying the field clears everything, without an error.
+    await field(page).fill('');
+    await expect(octal(page)).toHaveText('000');
+    await expect(checked(page)).resolves.toBe('000000000000');
+    await expect(page.getByText('Invalid permission string.')).toBeHidden();
+  });
+
+  test('special bits: four digits, capital S/T without execute, and their checkboxes', async ({ page }) => {
+    await page.goto('/chmod-generator');
+    await field(page).fill('1777');
+    await expect(symbolic(page)).toHaveText('rwxrwxrwt');
+    await expect(page.getByText('Special: sticky bit')).toBeVisible();
+    await expect(checked(page)).resolves.toBe('111111111001');
+
+    await field(page).fill('rwSr-Sr-T'); // special bits without execute: capitals
+    await expect(octal(page)).toHaveText('7644');
+    await expect(page.getByText('Special: setuid, setgid, sticky bit')).toBeVisible();
+
+    await page.getByRole('checkbox').nth(9).click(); // setuid off
+    await expect(field(page)).toHaveValue('3644');
+    await expect(symbolic(page)).toHaveText('rw-r-Sr-T');
+
+    await field(page).fill('-rwxr-xr-x'); // ls -l style, with the file type
+    await expect(octal(page)).toHaveText('755');
+  });
+
+  test('a preset after an invalid string clears the error', async ({ page }) => {
+    await page.goto('/chmod-generator');
+    await field(page).fill('rwz');
+    await expect(page.getByText('Invalid permission string.')).toBeVisible();
+    await page.getByRole('button', { name: '600', exact: true }).click();
+    await expect(page.getByText('Invalid permission string.')).toBeHidden();
+    await expect(field(page)).toHaveValue('600');
+    await expect(symbolic(page)).toHaveText('rw-------');
+  });
+});
+
 test.describe('Chronometer', () => {
   test('start, lap, stop, resume, reset', async ({ page }) => {
     // Fake clock, paused: time only moves with runFor(), so the display is deterministic.

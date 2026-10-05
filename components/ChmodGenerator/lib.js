@@ -1,11 +1,8 @@
+// Unix permissions: { special: { setuid, setgid, sticky }, owner|group|other: { read, write,
+// execute } }, to and from octal ("755", "1777") and symbolic ("rwxr-xr-x") notation.
+
 export const bitsToOctal = (read, write, execute) =>
   (read ? 4 : 0) + (write ? 2 : 0) + (execute ? 1 : 0);
-
-export const bitsToSymbol = (read, write, execute) =>
-  `${read ? 'r' : '-'}${write ? 'w' : '-'}${execute ? 'x' : '-'}`;
-
-export const toChmodString = (owner, group, other) =>
-  `${owner}${group}${other}`;
 
 export const EMPTY_PERMS = {
   special: { setuid: false, setgid: false, sticky: false },
@@ -94,3 +91,10 @@ export const describePerms = (perms) => {
   if (specials.length) lines.push(`Special: ${specials.join(', ')}`);
   return lines;
 };
+
+// Flips one bit: entity is 'owner' | 'group' | 'other' | 'special'.
+export const togglePerm = (perms, entity, bit) =>
+  ({ ...perms, [entity]: { ...perms[entity], [bit]: !perms[entity][bit] } });
+
+// What the user typed, as octal or symbolic notation; null if it's neither.
+export const parsePerms = (raw) => parseOctal(raw) || parseSymbolic(raw);
