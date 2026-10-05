@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  bitsToOctal, bitsToSymbol, toChmodString,
-  toOctalString, toPermString, parseOctal, parseSymbolic, describePerms,
+  bitsToOctal,
+  toOctalString, toPermString, parseOctal, parseSymbolic, parsePerms, togglePerm, describePerms,
   EMPTY_PERMS,
-} from '@/lib/chmod';
+} from '@/components/ChmodGenerator/lib';
 
 describe('CHMOD', () => {
   describe('bitsToOctal', () => {
@@ -14,20 +14,6 @@ describe('CHMOD', () => {
     it('returns 2 for -w-', () => expect(bitsToOctal(false, true, false)).toBe(2));
     it('returns 1 for --x', () => expect(bitsToOctal(false, false, true)).toBe(1));
     it('returns 0 for ---', () => expect(bitsToOctal(false, false, false)).toBe(0));
-  });
-
-  describe('bitsToSymbol', () => {
-    it('returns "rwx"', () => expect(bitsToSymbol(true, true, true)).toBe('rwx'));
-    it('returns "r--"', () => expect(bitsToSymbol(true, false, false)).toBe('r--'));
-    it('returns "---"', () => expect(bitsToSymbol(false, false, false)).toBe('---'));
-    it('returns "rw-"', () => expect(bitsToSymbol(true, true, false)).toBe('rw-'));
-  });
-
-  describe('toChmodString', () => {
-    it('builds 755', () => expect(toChmodString(7, 5, 5)).toBe('755'));
-    it('builds 644', () => expect(toChmodString(6, 4, 4)).toBe('644'));
-    it('builds 777', () => expect(toChmodString(7, 7, 7)).toBe('777'));
-    it('builds 000', () => expect(toChmodString(0, 0, 0)).toBe('000'));
   });
 
   describe('toOctalString', () => {
@@ -139,6 +125,32 @@ describe('CHMOD', () => {
       const lines = describePerms({ ...EMPTY_PERMS, special: { setuid: true, setgid: false, sticky: true } });
       expect(lines[3]).toContain('setuid');
       expect(lines[3]).toContain('sticky bit');
+    });
+  });
+  describe('togglePerm', () => {
+    it('flips one bit and leaves the rest', () => {
+      const once = togglePerm(EMPTY_PERMS, 'group', 'write');
+      expect(toOctalString(once)).toBe('020');
+      expect(toOctalString(togglePerm(once, 'group', 'write'))).toBe('000');
+      expect(toOctalString(togglePerm(once, 'special', 'sticky'))).toBe('1020');
+    });
+
+    it('never mutates the input', () => {
+      togglePerm(EMPTY_PERMS, 'owner', 'read');
+      expect(toOctalString(EMPTY_PERMS)).toBe('000');
+    });
+  });
+
+  describe('parsePerms', () => {
+    it('reads octal or symbolic notation', () => {
+      expect(toOctalString(parsePerms('755'))).toBe('755');
+      expect(toOctalString(parsePerms('rwxr-xr-x'))).toBe('755');
+      expect(toOctalString(parsePerms('-rw-r--r--'))).toBe('644');
+    });
+
+    it('returns null for anything else', () => {
+      expect(parsePerms('999')).toBeNull();
+      expect(parsePerms('rwz')).toBeNull();
     });
   });
 });
