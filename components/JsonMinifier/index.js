@@ -63,7 +63,7 @@ const JsonMinifier = () => {
           <span className="text-sm text-muted-foreground">
             Output {outputBytes > 0 && `· ${outputBytes} bytes`}
             {savings !== null && savings > 0 && (
-              <span className="text-green-500 ml-1">({savings}% smaller)</span>
+              <span className="text-green-700 dark:text-green-400 ml-1">({savings}% smaller)</span>
             )}
             {savings !== null && savings < 0 && (
               <span className="text-muted-foreground ml-1">({Math.abs(savings)}% larger)</span>

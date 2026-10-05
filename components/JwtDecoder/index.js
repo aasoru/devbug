@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { twMerge } from 'tailwind-merge';
+
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { decodeToken, isExpired } from './lib';
@@ -20,7 +22,7 @@ const ExpiryBadge = ({ exp }) => {
   if (!exp) return null;
   const expired = isExpired(exp, now);
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${expired ? 'bg-destructive/20 text-destructive' : 'bg-green-500/20 text-green-600 dark:text-green-400'}`}>
+    <span className={twMerge('text-xs font-semibold px-2 py-0.5 rounded-full', expired ? 'bg-destructive/20 text-destructive' : 'bg-green-500/20 text-green-800 dark:text-green-400')}>
       {expired ? 'Expired' : 'Valid'}
     </span>
   );
