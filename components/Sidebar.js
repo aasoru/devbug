@@ -34,9 +34,11 @@ const Sidebar = () => {
       <aside
         id="sidebar"
         className={twMerge(
-          'h-full bg-sidebar text-sm divide-y divide-neutral-600 max-md:transition',
+          'h-full bg-sidebar text-sm divide-y divide-neutral-600 max-md:transition-all',
           'max-md:fixed max-md:z-10 max-md:inset-0 max-md:w-5/6 max-md:max-w-xs max-md:overflow-y-scroll',
-          !sidebarOpen && 'max-md:-translate-x-full',
+          // Closed on a phone it's off screen: also invisible, so its links take no focus
+          // (visibility switches after the slide, as part of the transition).
+          !sidebarOpen && 'max-md:invisible max-md:-translate-x-full',
           sidebarOpen &&
             'max-md:translate-x-0 max-md:shadow-[0px_0px_20px_0px] max-md:shadow-black'
         )}
@@ -48,13 +50,15 @@ const Sidebar = () => {
             {'}'} DEVBUG
           </div>
         </Link>
-        <ul className="divide-y divide-neutral-600 font-bold">
-          {TOOLS.map((tool) => (
-            <MenuItem key={tool.href} href={tool.href} current={pathname === tool.href} onNavigate={close}>
-              {tool.name}
-            </MenuItem>
-          ))}
-        </ul>
+        <nav aria-label="Tools">
+          <ul className="divide-y divide-neutral-600 font-bold">
+            {TOOLS.map((tool) => (
+              <MenuItem key={tool.href} href={tool.href} current={pathname === tool.href} onNavigate={close}>
+                {tool.name}
+              </MenuItem>
+            ))}
+          </ul>
+        </nav>
       </aside>
     </>
   );
