@@ -1,51 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-
-const pad = (n) => String(n).padStart(2, '0');
-
-const formatTime = (ms) => {
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const cs = Math.floor((ms % 1000) / 10);
-  return h > 0
-    ? `${pad(h)}:${pad(m)}:${pad(s)}.${pad(cs)}`
-    : `${pad(m)}:${pad(s)}.${pad(cs)}`;
-};
+import { useStopwatch } from './hooks/useStopwatch';
+import { formatTime } from './lib';
 
 const Chronometer = () => {
-  const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [laps, setLaps] = useState([]);
-  const intervalRef = useRef(null);
-  const startRef = useRef(0);
-  const accRef = useRef(0);
-
-  const start = () => {
-    startRef.current = Date.now();
-    setRunning(true);
-    intervalRef.current = setInterval(() => {
-      setElapsed(accRef.current + Date.now() - startRef.current);
-    }, 10);
-  };
-
-  const stop = () => {
-    clearInterval(intervalRef.current);
-    accRef.current += Date.now() - startRef.current;
-    setRunning(false);
-  };
-
-  const reset = () => {
-    clearInterval(intervalRef.current);
-    accRef.current = 0;
-    setElapsed(0);
-    setLaps([]);
-    setRunning(false);
-  };
-
-  const lap = () => setLaps((prev) => [...prev, elapsed]);
+  const { elapsed, running, laps, start, stop, reset, lap } = useStopwatch();
 
   return (
     <>
