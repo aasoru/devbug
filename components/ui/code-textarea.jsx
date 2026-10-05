@@ -18,7 +18,7 @@ const CodeTextarea = ({ value = '', onChange, placeholder, readOnly, className }
   };
 
   return (
-    <div className="flex overflow-hidden rounded-md border bg-background font-mono text-sm">
+    <div className="flex overflow-hidden rounded-md border bg-background font-mono text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
       <div
         ref={gutterRef}
         aria-hidden

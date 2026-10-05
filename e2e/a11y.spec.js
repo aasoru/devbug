@@ -95,3 +95,48 @@ for (const scheme of ['light', 'dark']) {
     });
   });
 }
+
+test.describe('Keyboard', () => {
+  test('"Skip to content" is the first stop and jumps past the menu', async ({ page }) => {
+    await page.goto('/base64');
+    await page.keyboard.press('Tab');
+    const skip = page.getByRole('link', { name: 'Skip to content' });
+    await expect(skip).toBeFocused();
+    await expect(skip).toBeInViewport(); // shown when focused
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Encode' })).toBeFocused(); // the tool's first control
+  });
+
+  test('on a phone, the closed menu takes no focus; open, it does', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/base64');
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => Boolean(document.activeElement.closest('aside')))).toBe(false);
+    }
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.locator('aside')).toBeInViewport();
+    await page.locator('aside').getByRole('link', { name: 'Mosaic', exact: true }).focus();
+    await expect(page.locator('aside').getByRole('link', { name: 'Mosaic', exact: true })).toBeFocused();
+  });
+
+  test('every control shows where the focus is', async ({ page }) => {
+    for (const path of ['/', ...TOOLS.map((t) => t.path)]) {
+      await page.goto(path);
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Tab');
+        const focus = await page.evaluate(() => {
+          const el = document.activeElement;
+          if (!el || el === document.body) return null;
+          // A ring on the element itself or on the box that wraps it (focus-within).
+          const shows = (e) => { const cs = getComputedStyle(e); return (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || (cs.boxShadow !== 'none' && /rgb/.test(cs.boxShadow)); };
+          return { shown: shows(el) || (el.parentElement && shows(el.parentElement)), what: el.outerHTML.slice(0, 80) };
+        });
+        if (!focus) break;
+        expect(focus.shown, `no visible focus on ${path}: ${focus.what}`).toBe(true);
+      }
+    }
+  });
+});
+
