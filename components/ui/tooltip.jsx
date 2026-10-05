@@ -32,7 +32,7 @@ const TooltipTrigger = ({ children, asChild, ...props }) => {
   return <span {...handlers} {...props}>{children}</span>
 }
 
-const TooltipContent = React.forwardRef(({ className, ...props }, ref) => {
+const TooltipContent = ({ ref, className, ...props }) => {
   const { open } = React.useContext(TooltipContext)
   if (!open) return null
   return (
@@ -45,7 +45,6 @@ const TooltipContent = React.forwardRef(({ className, ...props }, ref) => {
       {...props}
     />
   )
-})
-TooltipContent.displayName = "TooltipContent"
+}
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }

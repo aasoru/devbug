@@ -1,4 +1,3 @@
-import * as React from "react"
 import { twMerge } from "tailwind-merge"
 
 const variants = {
@@ -19,13 +18,12 @@ const sizes = {
 
 const base = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
 
-const Button = React.forwardRef(({ className, variant = "default", size = "default", ...props }, ref) => (
+const Button = ({ ref, className, variant = "default", size = "default", ...props }) => (
   <button
     ref={ref}
     className={twMerge(base, variants[variant], sizes[size], className)}
     {...props}
   />
-))
-Button.displayName = "Button"
+)
 
 export { Button }
