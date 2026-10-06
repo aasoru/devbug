@@ -12,6 +12,15 @@ import { METADATA } from '@/shared/metadata.js';
 
 export const metadata = METADATA;
 
+// The browser / system bar colour: the page background of each theme (follows the system's
+// theme; the in-page toggle can't reach the system bar before the page loads).
+export const viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#020817' },
+  ],
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
