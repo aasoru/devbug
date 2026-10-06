@@ -137,13 +137,62 @@
 }
 
 /* View transitions (React <ViewTransition>, run on navigation; see RouteTransition, ToolTitle).
-   Clicks pass through to the live page while one runs, so none is lost. */
+   Only what is animated on purpose moves: the browser's default crossfade of the whole page
+   (the root) is off. What leaves goes quickly; what arrives comes in a little later and softer,
+   so the two never compete. Clicks pass through to the live page while one runs. */
+:root {
+  --vt-out: 120ms;
+  --vt-in: 200ms;
+  --vt-move: 380ms;
+  --vt-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 ::view-transition {
   pointer-events: none;
 }
-::view-transition-group(.morph) {
-  animation-duration: 300ms;
+::view-transition-group(root) {
+  animation: none;
 }
+::view-transition-old(root) {
+  display: none;
+}
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Switching tools: the old content fades out fast, then the new one fades in. */
+::view-transition-old(.page-out) {
+  animation: var(--vt-out) ease-in both vt-fade-out;
+}
+::view-transition-new(.page-in) {
+  animation: var(--vt-in) var(--vt-ease-out) var(--vt-out) both vt-fade-in;
+}
+
+/* A card's title becoming the page title: it moves and grows. Both snapshots scale by their
+   height, so text of different lengths grows instead of stretching; the old one fades out
+   early and the new one in, so the two never show at once. */
+::view-transition-group(.morph) {
+  animation-duration: var(--vt-move);
+  animation-timing-function: var(--vt-ease-out);
+}
+::view-transition-old(.morph),
+::view-transition-new(.morph) {
+  height: 100%;
+  width: auto;
+}
+::view-transition-old(.morph) {
+  animation: calc(var(--vt-move) * 0.35) ease-in both vt-fade-out;
+}
+::view-transition-new(.morph) {
+  animation: calc(var(--vt-move) * 0.5) var(--vt-ease-out) calc(var(--vt-move) * 0.25) both vt-fade-in;
+}
+
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+}
+
 /* No movement for people who asked their system for less: content swaps at once. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*),
@@ -153,4 +202,3 @@
     animation-delay: 0s !important;
   }
 }
-
