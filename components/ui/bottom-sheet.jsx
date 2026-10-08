@@ -12,8 +12,8 @@ const PILL = "rounded-full group-focus-visible:ring-2 group-focus-visible:ring-r
 // in native full screen only the full screen element's subtree is shown.
 // Closed: a handle at the bottom, raised off the edge; its hit area (80×32 px) is well over the
 // 24 px minimum but small, as it covers the content behind. Tap it (or Enter) or drag it up to
-// open. Open: a half-transparent panel, blurred enough for its text to stay readable, so what's
-// behind still shows through.
+// open. Open: a mostly see-through panel (35% opaque), blurred enough for its text to stay
+// readable, so what's behind shows through.
 // To close: tap or drag the grip down, press Esc, or tap the backdrop. The backdrop takes
 // that tap, so it doesn't also reach what's underneath (a link, a video's sound).
 export function BottomSheet({ open, onOpenChange, label, handleLabel, children }) {
@@ -63,7 +63,7 @@ export function BottomSheet({ open, onOpenChange, label, handleLabel, children }
           aria-label={label}
           inert={!open}
           className={twMerge(
-            "absolute inset-x-0 bottom-0 z-30 flex max-h-[85%] flex-col rounded-t-2xl border-t bg-background/50 shadow-lg backdrop-blur-lg transition-all duration-300",
+            "absolute inset-x-0 bottom-0 z-30 flex max-h-[85%] flex-col rounded-t-2xl border-t bg-background/35 shadow-lg backdrop-blur-lg transition-all duration-300",
             open ? "visible translate-y-0" : "invisible translate-y-full"
           )}
         >
