@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import { RouteTransition } from '@/components/RouteTransition';
+import { ServiceWorker } from '@/components/ServiceWorker';
 
 import { METADATA } from '@/shared/metadata.js';
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
+          <ServiceWorker />
           <UIProvider>
             {/* The first stop for keyboard users: past the menu, straight to the tool. Off screen
                 until it gets focus. */}
