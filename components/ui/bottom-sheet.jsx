@@ -11,9 +11,10 @@ const PILL = "rounded-full group-focus-visible:ring-2 group-focus-visible:ring-r
 // A bottom sheet laid over its positioned parent (`relative`/`fixed`). Not a portal on purpose:
 // in native full screen only the full screen element's subtree is shown.
 // Closed: a handle at the bottom, raised off the edge; its hit area (80×32 px) is well over the
-// 24 px minimum but small, as it covers the content behind. Tap it (or Enter) or drag it up to
-// open. Open: a mostly see-through panel (35% opaque), blurred enough for its text to stay
-// readable, so what's behind shows through.
+// 24 px minimum but small, as it covers the content behind. White with a dark ring, so it
+// stands out on any picture, light or dark. Tap it (or Enter) or drag it up to
+// open. Open: a mostly see-through panel (35% opaque) so what's behind shows through; its text
+// stays readable on any picture thanks to .legible-over-media (app/globals.css).
 // To close: tap or drag the grip down, press Esc, or tap the backdrop. The backdrop takes
 // that tap, so it doesn't also reach what's underneath (a link, a video's sound).
 export function BottomSheet({ open, onOpenChange, label, handleLabel, children }) {
@@ -48,7 +49,7 @@ export function BottomSheet({ open, onOpenChange, label, handleLabel, children }
         {...drag.handlers}
         className="group absolute bottom-0 left-1/2 z-10 flex h-8 w-20 -translate-x-1/2 touch-none items-end justify-center pb-3 focus-visible:outline-hidden"
       >
-        <span className={twMerge(PILL, "h-2 w-16 bg-white/80 shadow-sm ring-1 ring-black/30")} />
+        <span className={twMerge(PILL, "h-2 w-16 bg-white shadow-sm ring-2 ring-black/70")} />
       </button>
       <div ref={root} className="contents">
         <div
@@ -76,7 +77,7 @@ export function BottomSheet({ open, onOpenChange, label, handleLabel, children }
           >
             <span className={twMerge(PILL, "h-1.5 w-12 bg-muted-foreground/40")} />
           </button>
-          <div className="overflow-y-auto px-4 pb-4">{children}</div>
+          <div className="legible-over-media overflow-y-auto px-4 pb-4">{children}</div>
         </div>
       </div>
     </>
