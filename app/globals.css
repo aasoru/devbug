@@ -136,6 +136,21 @@
   }
 }
 
+/* Text on a see-through panel over pictures (ui/bottom-sheet): whatever is behind can be as light
+   or as dark as the text, and a blur doesn't change that. So the panel's loose text (labels,
+   messages) uses the main text colour, wrapped in a halo of the background colour: the halo is
+   the backdrop each letter is read against (the technique used for subtitles and maps).
+   Controls (buttons, fields) have their own solid backgrounds. */
+.legible-over-media :where(label > span, p) {
+  color: var(--color-foreground);
+  text-shadow:
+    0 0 1px var(--color-background),
+    0 0 1px var(--color-background),
+    0 0 2px var(--color-background),
+    0 0 4px var(--color-background),
+    0 0 8px var(--color-background);
+}
+
 /* View transitions (React <ViewTransition>, run on navigation; see RouteTransition, ToolTitle).
    Only what is animated on purpose moves: the browser's default crossfade of the whole page
    (the root) is off. What leaves goes quickly; what arrives comes in a little later and softer,
