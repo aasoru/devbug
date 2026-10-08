@@ -31,8 +31,10 @@ function Picture({ item, playback }) {
   );
 }
 
-// Sound on/off for one video (the keyboard-friendly twin of clicking the video). Only the video
-// with sound shows it; on muted ones it's invisible until reached with the keyboard.
+// Sound on/off for one video: the keyboard-friendly twin of tapping the video, and the sign of
+// which video plays sound. Only that video shows it; on muted ones it's invisible until reached
+// with the keyboard. It never takes taps: they go to the video, which toggles the sound the same
+// way — and a double tap anywhere on the video, this corner included, must open it.
 function SoundButton({ item, playback }) {
   const on = playback.audioId === item.id;
   return (
@@ -42,7 +44,7 @@ function SoundButton({ item, playback }) {
       aria-pressed={on}
       onClick={() => playback.toggleAudio(item.id)}
       className={twMerge(
-        'absolute bottom-1 left-1 rounded-full p-1 text-white transition-opacity',
+        'pointer-events-none absolute bottom-1 left-1 rounded-full p-1 text-white transition-opacity',
         on ? 'bg-primary text-primary-foreground' : 'bg-black/60 opacity-0 focus-visible:opacity-100'
       )}
     >

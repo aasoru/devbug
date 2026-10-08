@@ -1032,6 +1032,27 @@ test.describe('Mosaic — my files: videos', () => {
     }
   });
 
+  test("the hidden sound button of a muted video doesn't take taps: a double tap on its corner opens the video", async ({ page }) => {
+    await page.goto('/mosaic');
+    await page.getByTestId('mosaic-file-input').setInputFiles([await recordWebm(page, 320, 180, 'one.webm'), await recordWebm(page, 180, 320, 'two.webm')]);
+    await expect(videos(page)).toHaveCount(2);
+    // Where the (invisible) sound button sits: the tile's bottom-left corner (on screen first).
+    await page.locator('video[aria-label="one.webm"]').scrollIntoViewIfNeeded();
+    const button = await page.getByRole('button', { name: 'Sound for one.webm' }).boundingBox();
+    const corner = { x: button.x + button.width / 2, y: button.y + button.height / 2 };
+    await page.mouse.dblclick(corner.x, corner.y);
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label'))).toBe('one.webm');
+    await page.evaluate(() => document.exitFullscreen());
+    // Closed for real: the player's state is cleared (its controls go) — fullscreenElement empties
+    // a moment before the browser's fullscreenchange event, which is what resets the sound.
+    await expect.poll(() => page.locator('video[aria-label="one.webm"]').evaluate((v) => v.controls)).toBe(false);
+    // The keyboard still reaches it, and it shows when focused.
+    await page.keyboard.press('Shift');
+    await page.getByRole('button', { name: 'Sound for two.webm' }).focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.locator('video[aria-label="two.webm"]').evaluate((v) => v.muted)).toBe(false);
+  });
+
   test('allows at most 10 videos and rejects unplayable ones', async ({ page }) => {
     await page.goto('/mosaic');
     const clips = [];
